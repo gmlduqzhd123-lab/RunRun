@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="ko" data-qr-url="https://gmlduqzhd123-lab.github.io/RunRun/" data-qr-name="달리기 뽑기">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>달리기 뽑기</title>
+<style>
+  :root {
+    --bg: #1a1446; --panel: #2a2266; --panel2: #372d7d; --line: #4b3f9e;
+    --text: #f8f7ff; --muted: #b9b3e6; --accent: #ffc23d; --accent2: #3ee08f; --pink: #ff5fa2; --sky: #4cc9ff;
+    --gold: #ffd54a; --silver: #d9e1ee; --bronze: #f0a265;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif; overflow: hidden;
+  }
+  #app { position: relative; width: 100vw; height: 100vh; }
+
+  /* ---------- 설정 화면 ---------- */
+  #setup {
+    position: absolute; inset: 0; display: flex; justify-content: center;
+    background: transparent; overflow: auto; padding: 16px;
+  }
+  #setupBg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+  #setup::before {
+    content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background:
+      radial-gradient(circle at 12% 8%, rgba(255,95,162,.30), transparent 38%),
+      radial-gradient(circle at 88% 88%, rgba(76,201,255,.24), transparent 42%),
+      linear-gradient(155deg, rgba(55,28,145,.48), rgba(24,13,78,.62));
+    backdrop-filter: saturate(1.18);
+  }
+  #setup .card { position: relative; z-index: 2; margin: auto 0; }
+  .card { background: rgba(42,34,102,.84); backdrop-filter: blur(10px); border: 1px solid rgba(185,179,230,.36); border-radius: 24px; padding: 28px 32px; width: min(720px, 100%); box-shadow: 0 20px 60px rgba(10,5,40,.58); }
+  .card h1 { margin: 0 0 4px; font-size: 32px; letter-spacing: -1px; }
+  .card h1 span { color: var(--accent); }
+  .card p.sub { margin: 0 0 20px; color: var(--muted); font-size: 14px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .row > * { flex: 1; min-width: 160px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  textarea, input[type=number] {
+    width: 100%; background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+    border-radius: 10px; padding: 10px 12px; font-size: 15px; font-family: inherit;
+  }
+  textarea { height: 150px; resize: vertical; }
+  input[type=number] { font-size: 20px; font-weight: 700; text-align: center; }
+  .btn { border: none; border-radius: 12px; padding: 12px 18px; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; transition: transform .1s, filter .1s; }
+  .btn:hover { filter: brightness(1.1); } .btn:active { transform: scale(.97); }
+  .btn.primary { background: linear-gradient(135deg, var(--accent), #ff8a3d); color: #2a1300; font-size: 20px; padding: 16px; width: 100%; box-shadow: 0 6px 20px rgba(255,140,60,.35); }
+  .mode { display: flex; gap: 8px; margin-bottom: 16px; }
+  .mode .btn { flex: 1; font-size: 15px; padding: 12px; background: var(--panel2); color: var(--muted); border: 2px solid transparent; }
+  .mode .btn.on { color: var(--text); border-color: var(--accent); background: #463a96; }
+  .mode .btn small { display: block; font-size: 11px; font-weight: 500; opacity: .8; margin-top: 2px; }
+  .btn.ghost { background: var(--panel2); color: var(--text); font-size: 14px; padding: 8px 12px; flex: 0 0 auto; }
+  .btn.ghost.on { outline: 2px solid var(--accent); }
+  .row > .btn.len, .row > .btn.amt { min-width: 0; flex: 1 1 0; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .count-badge { font-size: 13px; color: var(--accent2); font-weight: 700; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); justify-content: center; margin-top: 10px; }
+
+  /* ---------- 게임 화면 ---------- */
+  #game { position: absolute; inset: 0; display: none; }
+  #game canvas { display: block; width: 100%; height: 100%; }
+  #hud { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; gap: 10px; }
+  #hud .box { background: rgba(26,20,70,.8); border: 1px solid rgba(255,255,255,.12); border-radius: 12px; padding: 8px 14px; font-size: 14px; backdrop-filter: blur(4px); white-space: nowrap; }
+
+  /* 실시간 순위표 */
+  #live { position: absolute; top: 60px; right: 12px; width: 210px; max-height: calc(100% - 140px); overflow: hidden;
+    background: rgba(26,20,70,.82); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 8px; backdrop-filter: blur(4px); pointer-events: none; }
+  #live h4 { margin: 2px 4px 6px; font-size: 13px; color: var(--accent); display: flex; justify-content: space-between; }
+  #live h4 span { color: var(--muted); font-weight: 500; }
+  #liveList { position: relative; }
+  .lv { position: absolute; left: 0; right: 0; height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 6px; border-radius: 8px;
+    font-size: 13px; transition: transform .35s ease; background: rgba(255,255,255,.05); overflow: hidden; }
+  .lv .bar { position: absolute; left: 0; top: 0; bottom: 0; opacity: .28; border-radius: 8px; }
+  .lv .rk { position: relative; width: 26px; font-weight: 900; text-align: center; color: var(--muted); }
+  .lv .nm { position: relative; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+  .lv .st { position: relative; font-size: 11px; color: var(--muted); }
+  .lv.fin { background: rgba(62,224,143,.18); }
+  .lv.win { background: rgba(255,213,74,.25); }
+  .lv.win .rk { color: var(--gold); }
+  #live.small { width: 170px; } #live.small .lv { font-size: 12px; }
+  #live .lv { pointer-events: auto; cursor: pointer; }
+  #live .lv:hover { filter: brightness(1.3); }
+  #live .lv.focus { outline: 2px solid var(--sky); }
+  #live .lv.eye { outline: 2px solid var(--pink); }
+  #live .tip { font-size: 11px; color: var(--muted); margin: 6px 4px 0; }
+  #viewAll { pointer-events: auto; cursor: pointer; display: none; margin-top: 6px; text-align: center; font-size: 13px; font-weight: 700;
+    padding: 6px; border-radius: 8px; background: var(--sky); color: #08223a; }
+  #hud .box b { color: var(--accent); }
+  #muteBtn, #bgmBtn { pointer-events: auto; cursor: pointer; }
+  #game { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none; }
+  #countdown { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 160px; font-weight: 900; color: #fff; text-shadow: 0 10px 40px rgba(0,0,0,.6); pointer-events: none; }
+  #countdown.pop { animation: cdpop .9s ease-out both; }
+  @keyframes cdpop { 0% { transform: scale(2.4); opacity: 0; } 25% { transform: scale(1); opacity: 1; } 80% { transform: scale(.9); opacity: 1; } 100% { transform: scale(.6); opacity: 0; } }
+
+  /* 알림 배너 (선두 교체, 마지막 스퍼트 등) */
+  #banner { position: absolute; left: 50%; top: 22%; transform: translate(-50%, 0); pointer-events: none; white-space: nowrap;
+    font-size: clamp(22px, 4.2vw, 46px); font-weight: 900; color: #fff; padding: 10px 28px; border-radius: 999px;
+    background: linear-gradient(90deg, #ff3b5c, #ff8a3d); box-shadow: 0 10px 30px rgba(0,0,0,.35); text-shadow: 0 3px 0 rgba(0,0,0,.25); opacity: 0; }
+
+  /* 길게 누르기 배속 표시 */
+  #speedHud { position: absolute; left: 12px; bottom: 60px; display: flex; align-items: center; gap: 8px; pointer-events: none;
+    background: rgba(26,20,70,.75); border: 1px solid rgba(255,255,255,.12); border-radius: 999px; padding: 6px 14px 6px 6px; font-size: 13px; color: var(--muted); }
+  #speedHud .ring { width: 24px; height: 24px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p, 0) * 1turn), rgba(255,255,255,.15) 0); }
+  #speedHud.on { background: linear-gradient(90deg, #ff8a3d, #ff3b5c); color: #fff; font-weight: 900; font-size: 16px; }
+  #speedHud.on .ring { background: none; width: 0; }
+
+  /* ---------- 결과 화면 ---------- */
+  #result { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(20,12,60,.8); backdrop-filter: blur(6px); overflow: auto; padding: 16px; }
+  #result .card { width: min(760px, 100%); background: linear-gradient(180deg, #33297a, var(--panel)); }
+
+  /* 시상대 */
+  .podium { display: flex; justify-content: center; align-items: flex-end; gap: 10px; margin: 6px 0 18px; min-height: 0; }
+  .pd { flex: 0 1 170px; display: flex; flex-direction: column; align-items: center; animation: rise .6s cubic-bezier(.2,1.3,.4,1) both; }
+  .pd .who { font-size: 22px; font-weight: 900; margin-bottom: 6px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pd .ava { width: 46px; height: 46px; border-radius: 50%; border: 4px solid #fff; margin-bottom: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+  .pd .step { width: 100%; border-radius: 14px 14px 4px 4px; display: flex; align-items: flex-start; justify-content: center; padding-top: 10px;
+    font-size: 30px; font-weight: 900; color: #2a1a00; box-shadow: inset 0 -8px 0 rgba(0,0,0,.12); }
+  .pd.p1 .step { height: 130px; background: linear-gradient(180deg, #ffe680, var(--gold)); }
+  .pd.p2 .step { height: 95px; background: linear-gradient(180deg, #fff, var(--silver)); }
+  .pd.p3 .step { height: 70px; background: linear-gradient(180deg, #ffc89a, var(--bronze)); }
+  .pd.p1 .who { font-size: 28px; color: var(--gold); }
+  @keyframes rise { from { transform: translateY(60px); opacity: 0; } to { transform: none; opacity: 1; } }
+  #confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+  #result .card { text-align: center; position: relative; z-index: 3; }
+  #result h2 { margin: 0 0 16px; font-size: 34px; }
+  .winners { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 18px; min-height: 70px; }
+  .winner {
+    background: linear-gradient(135deg, var(--gold), #ff9f43); color: #2a1300; border-radius: 16px;
+    padding: 14px 22px; font-size: 26px; font-weight: 900; box-shadow: 0 6px 24px rgba(255,170,60,.45);
+    animation: pop .5s cubic-bezier(.2,1.5,.4,1) both;
+  }
+  .winner small { display: block; font-size: 13px; font-weight: 700; opacity: .75; }
+  @keyframes pop { from { transform: scale(0) rotate(-10deg); } to { transform: scale(1) rotate(0); } }
+  .drum { font-size: 22px; color: var(--muted); animation: blink .5s infinite alternate; }
+  @keyframes blink { to { opacity: .3; } }
+  .rankwrap { max-height: 280px; overflow: auto; margin: 0 auto 18px; border-radius: 14px; background: rgba(0,0,0,.18); padding: 6px; }
+  .rankgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; }
+  .ri { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: var(--panel2); text-align: left;
+    font-size: 15px; animation: fadeUp .35s ease both; }
+  .ri .n { min-width: 44px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 14px; background: rgba(255,255,255,.1); }
+  .ri .nm { flex: 1; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ri .s { font-size: 12px; color: var(--muted); }
+  .ri.w { background: linear-gradient(90deg, rgba(255,213,74,.35), rgba(255,213,74,.1)); outline: 1px solid rgba(255,213,74,.6); }
+  .ri.r1 .n { background: var(--gold); color: #2a1a00; } .ri.r2 .n { background: var(--silver); color: #222; } .ri.r3 .n { background: var(--bronze); color: #2a1300; }
+  @keyframes fadeUp { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; border: 2px solid rgba(255,255,255,.8); }
+  .result-sub { color: var(--muted); font-size: 14px; margin: -8px 0 14px; }
+  .export { display: none; flex-wrap: wrap; gap: 6px; justify-content: center; margin: -4px 0 14px; }
+  .export .lbl { width: 100%; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+  .export .btn { font-size: 13px; padding: 8px 12px; background: var(--panel2); color: var(--text); border: 1px solid var(--line); }
+  #toast { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%) translateY(20px); background: #111827; color: #fff; padding: 10px 18px;
+    border-radius: 999px; font-size: 14px; font-weight: 700; opacity: 0; transition: .25s; pointer-events: none; z-index: 10; }
+  #toast.show { opacity: 1; transform: translateX(-50%); }
+</style>
+<meta name="description" content="참가자 이름을 넣고 달리기 경주로 당첨자·순서를 뽑는 교실 추첨 도구">
+<meta name="theme-color" content="#f59e0b">
+<meta property="og:type" content="website">
+<meta property="og:title" content="달리기 뽑기">
+<meta property="og:description" content="참가자 이름을 넣고 달리기 경주로 당첨자·순서를 뽑는 교실 추첨 도구">
+<meta property="og:url" content="https://gmlduqzhd123-lab.github.io/RunRun/">
+<meta property="og:image" content="https://gmlduqzhd123-lab.github.io/RunRun/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://gmlduqzhd123-lab.github.io/RunRun/og-image.jpg">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/favicon-32.png">
+<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="달리기 뽑기">
+<script src="./ys-install.js" defer></script>
+<script src="./ys-qr.js" defer></script>
+<style>
+/* 엽쌤 앱 공통: 📲 앱 설치 · 📱 QR (시작 화면 오른쪽 위) */
+.ys-top{position:absolute;top:10px;right:10px;z-index:60;display:flex;gap:6px}
+.ys-chip{display:inline-flex;align-items:center;gap:2px;min-height:36px;padding:0 12px;border:1px solid rgba(0,0,0,.15);border-radius:999px;background:rgba(255,255,255,.92);color:#1f2937;font:700 13px/1 system-ui,sans-serif;cursor:pointer;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.ys-credit{margin:14px 0 6px;font:12px/1.5 system-ui,sans-serif;opacity:.8;text-align:center}
+.ys-credit a{color:inherit;text-decoration:underline}
+@media (max-width:560px){.ys-wide{display:none}.ys-chip{padding:0 10px}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 설정 화면 -->
+  <div id="setup">
+<div class="ys-top"><button type="button" class="ys-chip" data-ys-install>📲 <span class="ys-wide">앱&nbsp;</span>설치</button><button type="button" class="ys-chip" data-qr aria-label="QR 코드로 접속">📱 QR</button></div>
+    <canvas id="setupBg" aria-hidden="true"></canvas>
+    <div class="card">
+      <h1>🏃 달리기 <span>뽑기</span></h1>
+      <p class="sub">참가자를 입력하고, 결승선에 먼저 도착하는 사람을 뽑아요!</p>
+      <div class="mode">
+        <button class="btn on" data-mode="pick">🎯 당첨자 뽑기<small>정한 인원만큼 먼저 도착한 사람</small></button>
+        <button class="btn" data-mode="order">🔢 순서만 뽑기<small>모두 완주할 때까지, 전체 순위 결정</small></button>
+      </div>
+      <div class="row">
+        <div style="flex: 2 1 280px;">
+          <label>참가자 이름 (한 줄에 한 명, 또는 쉼표로 구분) <span class="count-badge" id="nameCount"></span></label>
+          <textarea id="names" placeholder="예)&#10;김민준&#10;이서연&#10;박지호&#10;최수아"></textarea>
+          <div class="row" style="margin-top:8px;">
+            <label style="margin:0; display:flex; align-items:center; gap:6px; flex:0 0 auto;">
+              번호로 만들기: 1 ~ <input type="number" id="numCount" value="20" min="2" max="60" style="width:70px; font-size:14px; padding:4px;">
+            </label>
+            <button class="btn ghost" id="genNumbers">번호 채우기</button>
+            <button class="btn ghost" id="clearNames">지우기</button>
+          </div>
+        </div>
+        <div style="flex: 1 1 160px;">
+          <div id="pickOpts">
+            <label>뽑을 인원</label>
+            <input type="number" id="winnerCount" value="1" min="1" max="60">
+            <div class="hint">결승선에 먼저 도착한 순서대로 뽑혀요.</div>
+          </div>
+          <div id="orderOpts" class="hint" style="display:none; font-size:13px; line-height:1.5; background:var(--panel2); padding:10px; border-radius:10px;">
+            모든 참가자가 결승선에 들어올 때까지 달려서<br><b style="color:var(--accent)">1위부터 꼴찌까지 순서</b>를 정해요.<br>(발표 순서, 자리 배치 등에 활용)
+          </div>
+          <label style="margin-top:14px;">경기 길이</label>
+          <div class="row" style="gap:6px;">
+            <button class="btn ghost len" data-len="short">짧게</button>
+            <button class="btn ghost len on" data-len="normal">보통</button>
+            <button class="btn ghost len" data-len="long">길게</button>
+          </div>
+          <label style="margin-top:14px;">아이템 양</label>
+          <div class="row" style="gap:6px;">
+            <button class="btn ghost amt" data-amt="few">적게</button>
+            <button class="btn ghost amt on" data-amt="normal">보통</button>
+            <button class="btn ghost amt" data-amt="many">많이</button>
+          </div>
+        </div>
+      </div>
+      <button class="btn primary" id="startBtn">🚩 출발!</button>
+      <div class="legend">
+        <span>⚡ 번개: 가속</span><span>🚀 로켓: 폭발 가속</span><span>🌀 워프: 순간이동</span>
+        <span>🪨 바위: 넘어짐</span><span>🍌 바나나: 미끄러짐</span><span>🟤 진흙: 느려짐</span><span>💤 수면가스: 잠깐 잠듦</span>
+      </div>
+      <p class="ys-credit">© 2026 엽쌤. All rights reserved. · <a href="https://gmlduqzhd123-lab.github.io/YScode/">엽쌤의 다른 앱 보기 →</a></p>
+    </div>
+  </div>
+
+  <!-- 게임 화면 -->
+  <div id="game">
+    <canvas id="cv"></canvas>
+    <div id="hud">
+      <div class="box" id="hudInfo"></div>
+      <div class="box" id="hudOrder">도착: -</div>
+      <div style="display:flex; gap:6px;">
+        <div class="box" id="bgmBtn" title="배경음악 켜기/끄기">🎵</div>
+        <div class="box" id="muteBtn" title="소리 켜기/끄기">🔊</div>
+      </div>
+    </div>
+    <div id="banner"></div>
+    <div id="speedHud"><span class="ring" id="speedRing"></span><span id="speedTxt">👆 화면을 2초 길게 누르면 3배속</span></div>
+    <div id="live"><h4>📊 실시간 순위 <span id="liveCnt"></span></h4><div id="liveList"></div><div id="viewAll">👀 전체 보기로 돌아가기</div><div class="tip" id="liveTip">이름을 누르면 그 캐릭터 시점으로 봐요</div></div>
+    <div id="countdown"></div>
+  </div>
+
+  <!-- 결과 화면 -->
+  <div id="result">
+    <canvas id="confetti"></canvas>
+    <div class="card">
+      <h2 id="resultTitle">🥁 결과 발표!</h2>
+      <div class="result-sub" id="resultSub"></div>
+      <div class="podium" id="podium"></div>
+      <div class="winners" id="winnersBox"></div>
+      <div class="rankwrap" id="rankWrap" style="display:none;"><div class="rankgrid" id="rankTable"></div></div>
+      <div class="export" id="exportBox">
+        <div class="lbl">📤 결과 저장하기</div>
+        <button class="btn" data-ex="copy">📋 텍스트 복사</button>
+        <button class="btn" data-ex="md">📝 MD</button>
+        <button class="btn" data-ex="xlsx">📊 엑셀(XLSX)</button>
+        <button class="btn" data-ex="hwpx">📄 한글(HWPX)</button>
+        <button class="btn" data-ex="pdf">📕 PDF</button>
+        <button class="btn" data-ex="png">🖼️ 이미지(PNG)</button>
+      </div>
+      <div class="row" id="resultBtns" style="justify-content:center; display:none;">
+        <button class="btn primary" id="againBtn" style="flex:1;">🔁 같은 참가자로 다시</button>
+        <button class="btn ghost" id="backBtn" style="font-size:16px;">⚙️ 설정으로</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast"></div>
+</div>
+
+<!-- 한글(HWPX) 저장용 빈 문서 틀 -->
+<script type="text/plain" id="hwpx-version"><?xml version="1.0" encoding="UTF-8" standalone="yes" ?><hv:HCFVersion xmlns:hv="http://www.hancom.co.kr/hwpml/2011/version" tagetApplication="WORDPROCESSOR" major="5" minor="1" micro="1" buildNumber="0" os="1" xmlVersion="1.5" application="Hancom Office Hangul" appVersion="13, 0, 0, 1408 WIN32LEWindows_10"/></script>
+<script type="text/plain" id="hwpx-settings"><?xml version="1.0" encoding="UTF-8" standalone="yes" ?><ha:HWPApplicationSetting xmlns:ha="http://www.hancom.co.kr/hwpml/2011/app" xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0"><ha:CaretPosition listIDRef="0" paraIDRef="0" pos="16"/></ha:HWPApplicationSetting></script>
+<script type="text/plain" id="hwpx-container"><?xml version="1.0" encoding="UTF-8" standalone="yes" ?><ocf:container xmlns:ocf="urn:oasis:names:tc:opendocument:xmlns:container" xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf"><ocf:rootfiles><ocf:rootfile full-path="Contents/content.hpf" media-type="application/hwpml-package+xml"/><ocf:rootfile full-path="Preview/PrvText.txt" media-type="text/plain"/><ocf:rootfile full-path="META-INF/container.rdf" media-type="application/rdf+xml"/></ocf:rootfiles></ocf:container></script>
+<script type="text/plain" id="hwpx-manifest"><?xml version="1.0" encoding="UTF-8" standalone="yes" ?><odf:manifest xmlns:odf="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"/></script>
+<script type="text/plain" id="hwpx-rdf"><?xml version="1.0" encoding="UTF-8" standalone="yes" ?><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about=""><ns0:hasPart xmlns:ns0="http://www.hancom.co.kr/hwpml/2016/meta/pkg#" rdf:resource="Contents/header.xml"/></rdf:Description><rdf:Description rdf:about="Contents/header.xml"><rdf:type rdf:resource="http://www.hancom.co.kr/hwpml/2016/meta/pkg#HeaderFile"/></rdf:Description><rdf:Description rdf:about=""><ns0:hasPart xmlns:ns0="http://www.hancom.co.kr/hwpml/2016/meta/pkg#" rdf:resource="Contents/section0.xml"/></rdf:Description><rdf:Description rdf:about="Contents/section0.xml"><rdf:type rdf:resource="http://www.hancom.co.kr/hwpml/2016/meta/pkg#SectionFile"/></rdf:Description><rdf:Description rdf:about=""><rdf:type rdf:resource="http://www.hancom.co.kr/hwpml/2016/meta/pkg#Document"/></rdf:Description></rdf:RDF></script>
+<script type="text/plain" id="hwpx-hpf"><?xml version="1.0" encoding="UTF-8" standalone="yes" ?><opf:package xmlns:ha="http://www.hancom.co.kr/hwpml/2011/app" xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph" xmlns:hp10="http://www.hancom.co.kr/hwpml/2016/paragraph" xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section" xmlns:hc="http://www.hancom.co.kr/hwpml/2011/core" xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head" xmlns:hhs="http://www.hancom.co.kr/hwpml/2011/history" xmlns:hm="http://www.hancom.co.kr/hwpml/2011/master-page" xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf/" xmlns:ooxmlchart="http://www.hancom.co.kr/hwpml/2016/ooxmlchart" xmlns:hwpunitchar="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0" version="" unique-identifier="" id=""><opf:metadata><opf:title/><opf:language>ko</opf:language><opf:meta name="creator" content="text"/><opf:meta name="subject" content="text"/><opf:meta name="description" content="text"/><opf:meta name="lastsaveby" content="text"/><opf:meta name="CreatedDate" content="text">@@DATE@@</opf:meta><opf:meta name="ModifiedDate" content="text">@@DATE@@</opf:meta><opf:meta name="date" content="text"/><opf:meta name="keyword" content="text"/></opf:metadata><opf:manifest><opf:item id="header" href="Contents/header.xml" media-type="application/xml"/><opf:item id="section0" href="Contents/section0.xml" media-type="application/xml"/><opf:item id="settings" href="settings.xml" media-type="application/xml"/></opf:manifest><opf:spine><opf:itemref idref="header" linear="yes"/><opf:itemref idref="section0" linear="yes"/></opf:spine></opf:package></script>
+<script type="text/plain" id="hwpx-header"><?xml version='1.0' encoding='UTF-8' standalone='yes'?>
+<hh:head xmlns:ha="http://www.hancom.co.kr/hwpml/2011/app" xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph" xmlns:hp10="http://www.hancom.co.kr/hwpml/2016/paragraph" xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section" xmlns:hc="http://www.hancom.co.kr/hwpml/2011/core" xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head" xmlns:hhs="http://www.hancom.co.kr/hwpml/2011/history" xmlns:hm="http://www.hancom.co.kr/hwpml/2011/master-page" xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf/" xmlns:ooxmlchart="http://www.hancom.co.kr/hwpml/2016/ooxmlchart" xmlns:hwpunitchar="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0" version="1.5" secCnt="1"><hh:beginNum page="1" footnote="1" endnote="1" pic="1" tbl="1" equation="1"/><hh:refList><hh:fontfaces itemCnt="7"><hh:fontface lang="HANGUL" fontCnt="2"><hh:font id="0" face="함초롬돋움" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font><hh:font id="1" face="함초롬바탕" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font></hh:fontface><hh:fontface lang="LATIN" fontCnt="2"><hh:font id="0" face="함초롬돋움" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font><hh:font id="1" face="함초롬바탕" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font></hh:fontface><hh:fontface lang="HANJA" fontCnt="2"><hh:font id="0" face="함초롬돋움" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font><hh:font id="1" face="함초롬바탕" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font></hh:fontface><hh:fontface lang="JAPANESE" fontCnt="2"><hh:font id="0" face="함초롬돋움" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font><hh:font id="1" face="함초롬바탕" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font></hh:fontface><hh:fontface lang="OTHER" fontCnt="2"><hh:font id="0" face="함초롬돋움" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font><hh:font id="1" face="함초롬바탕" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font></hh:fontface><hh:fontface lang="SYMBOL" fontCnt="2"><hh:font id="0" face="함초롬돋움" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font><hh:font id="1" face="함초롬바탕" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font></hh:fontface><hh:fontface lang="USER" fontCnt="2"><hh:font id="0" face="함초롬돋움" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font><hh:font id="1" face="함초롬바탕" type="TTF" isEmbedded="0"><hh:typeInfo familyType="FCAT_GOTHIC" weight="6" proportion="4" contrast="0" strokeVariation="1" armStyle="1" letterform="1" midline="1" xHeight="1"/></hh:font></hh:fontface></hh:fontfaces><hh:borderFills itemCnt="4"><hh:borderFill id="1" threeD="0" shadow="0" centerLine="NONE" breakCellSeparateLine="0"><hh:slash type="NONE" Crooked="0" isCounter="0"/><hh:backSlash type="NONE" Crooked="0" isCounter="0"/><hh:leftBorder type="NONE" width="0.1 mm" color="#000000"/><hh:rightBorder type="NONE" width="0.1 mm" color="#000000"/><hh:topBorder type="NONE" width="0.1 mm" color="#000000"/><hh:bottomBorder type="NONE" width="0.1 mm" color="#000000"/><hh:diagonal type="SOLID" width="0.1 mm" color="#000000"/></hh:borderFill><hh:borderFill id="2" threeD="0" shadow="0" centerLine="NONE" breakCellSeparateLine="0"><hh:slash type="NONE" Crooked="0" isCounter="0"/><hh:backSlash type="NONE" Crooked="0" isCounter="0"/><hh:leftBorder type="NONE" width="0.1 mm" color="#000000"/><hh:rightBorder type="NONE" width="0.1 mm" color="#000000"/><hh:topBorder type="NONE" width="0.1 mm" color="#000000"/><hh:bottomBorder type="NONE" width="0.1 mm" color="#000000"/><hh:diagonal type="SOLID" width="0.1 mm" color="#000000"/><hc:fillBrush><hc:winBrush faceColor="none" hatchColor="#999999" alpha="0"/></hc:fillBrush></hh:borderFill><hh:borderFill id="3" threeD="0" shadow="0" centerLine="NONE" breakCellSeparateLine="0"><hh:slash type="NONE" Crooked="0" isCounter="0"/><hh:backSlash type="NONE" Crooked="0" isCounter="0"/><hh:leftBorder type="SOLID" width="0.12 mm" color="#000000"/><hh:rightBorder type="SOLID" width="0.12 mm" color="#000000"/><hh:topBorder type="SOLID" width="0.12 mm" color="#000000"/><hh:bottomBorder type="SOLID" width="0.12 mm" color="#000000"/><hh:diagonal type="SOLID" width="0.1 mm" color="#000000"/></hh:borderFill><hh:borderFill id="4" threeD="0" shadow="0" centerLine="NONE" breakCellSeparateLine="0"><hh:slash type="NONE" Crooked="0" isCounter="0"/><hh:backSlash type="NONE" Crooked="0" isCounter="0"/><hh:leftBorder type="SOLID" width="0.12 mm" color="#000000"/><hh:rightBorder type="SOLID" width="0.12 mm" color="#000000"/><hh:topBorder type="SOLID" width="0.12 mm" color="#000000"/><hh:bottomBorder type="SOLID" width="0.12 mm" color="#000000"/><hh:diagonal type="SOLID" width="0.1 mm" color="#000000"/><hc:fillBrush><hc:winBrush faceColor="#FFE58A" hatchColor="#FF000000" alpha="0"/></hc:fillBrush></hh:borderFill></hh:borderFills><hh:charProperties itemCnt="9"><hh:charPr id="0" height="1000" textColor="#000000" shadeColor="none" useFontSpace="0" useKerning="0" symMark="NONE" borderFillIDRef="2"><hh:fontRef hangul="1" latin="1" hanja="1" japanese="1" other="1" symbol="1" user="1"/><hh:ratio hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:spacing hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:relSz hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:offset hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:underline type="NONE" shape="SOLID" color="#000000"/><hh:strikeout shape="NONE" color="#000000"/><hh:outline type="NONE"/><hh:shadow type="NONE" color="#C0C0C0" offsetX="10" offsetY="10"/></hh:charPr><hh:charPr id="1" height="1000" textColor="#000000" shadeColor="none" useFontSpace="0" useKerning="0" symMark="NONE" borderFillIDRef="2"><hh:fontRef hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:ratio hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:spacing hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:relSz hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:offset hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:underline type="NONE" shape="SOLID" color="#000000"/><hh:strikeout shape="NONE" color="#000000"/><hh:outline type="NONE"/><hh:shadow type="NONE" color="#C0C0C0" offsetX="10" offsetY="10"/></hh:charPr><hh:charPr id="2" height="900" textColor="#000000" shadeColor="none" useFontSpace="0" useKerning="0" symMark="NONE" borderFillIDRef="2"><hh:fontRef hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:ratio hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:spacing hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:relSz hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:offset hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:underline type="NONE" shape="SOLID" color="#000000"/><hh:strikeout shape="NONE" color="#000000"/><hh:outline type="NONE"/><hh:shadow type="NONE" color="#C0C0C0" offsetX="10" offsetY="10"/></hh:charPr><hh:charPr id="3" height="900" textColor="#000000" shadeColor="none" useFontSpace="0" useKerning="0" symMark="NONE" borderFillIDRef="2"><hh:fontRef hangul="1" latin="1" hanja="1" japanese="1" other="1" symbol="1" user="1"/><hh:ratio hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:spacing hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:relSz hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:offset hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:underline type="NONE" shape="SOLID" color="#000000"/><hh:strikeout shape="NONE" color="#000000"/><hh:outline type="NONE"/><hh:shadow type="NONE" color="#C0C0C0" offsetX="10" offsetY="10"/></hh:charPr><hh:charPr id="4" height="900" textColor="#000000" shadeColor="none" useFontSpace="0" useKerning="0" symMark="NONE" borderFillIDRef="2"><hh:fontRef hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:ratio hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:spacing hangul="-5" latin="-5" hanja="-5" japanese="-5" other="-5" symbol="-5" user="-5"/><hh:relSz hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:offset hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:underline type="NONE" shape="SOLID" color="#000000"/><hh:strikeout shape="NONE" color="#000000"/><hh:outline type="NONE"/><hh:shadow type="NONE" color="#C0C0C0" offsetX="10" offsetY="10"/></hh:charPr><hh:charPr id="5" height="1600" textColor="#2E74B5" shadeColor="none" useFontSpace="0" useKerning="0" symMark="NONE" borderFillIDRef="2"><hh:fontRef hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:ratio hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:spacing hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:relSz hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:offset hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:underline type="NONE" shape="SOLID" color="#000000"/><hh:strikeout shape="NONE" color="#000000"/><hh:outline type="NONE"/><hh:shadow type="NONE" color="#C0C0C0" offsetX="10" offsetY="10"/></hh:charPr><hh:charPr id="6" height="1100" textColor="#000000" shadeColor="none" useFontSpace="0" useKerning="0" symMark="NONE" borderFillIDRef="2"><hh:fontRef hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:ratio hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:spacing hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:relSz hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:offset hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:underline type="NONE" shape="SOLID" color="#000000"/><hh:strikeout shape="NONE" color="#000000"/><hh:outline type="NONE"/><hh:shadow type="NONE" color="#C0C0C0" offsetX="10" offsetY="10"/></hh:charPr><hh:charPr height="1800" textColor="#000000" shadeColor="none" useFontSpace="0" useKerning="0" symMark="NONE" borderFillIDRef="2" id="7"><hh:fontRef hangul="1" latin="1" hanja="1" japanese="1" other="1" symbol="1" user="1"/><hh:ratio hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:spacing hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:relSz hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:offset hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:bold/><hh:underline type="NONE" shape="SOLID" color="#000000"/><hh:strikeout shape="NONE" color="#000000"/><hh:outline type="NONE"/><hh:shadow type="NONE" color="#C0C0C0" offsetX="10" offsetY="10"/></hh:charPr><hh:charPr height="1000" textColor="#000000" shadeColor="none" useFontSpace="0" useKerning="0" symMark="NONE" borderFillIDRef="2" id="8"><hh:fontRef hangul="1" latin="1" hanja="1" japanese="1" other="1" symbol="1" user="1"/><hh:ratio hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:spacing hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:relSz hangul="100" latin="100" hanja="100" japanese="100" other="100" symbol="100" user="100"/><hh:offset hangul="0" latin="0" hanja="0" japanese="0" other="0" symbol="0" user="0"/><hh:bold/><hh:underline type="NONE" shape="SOLID" color="#000000"/><hh:strikeout shape="NONE" color="#000000"/><hh:outline type="NONE"/><hh:shadow type="NONE" color="#C0C0C0" offsetX="10" offsetY="10"/></hh:charPr></hh:charProperties><hh:tabProperties itemCnt="3"><hh:tabPr id="0" autoTabLeft="0" autoTabRight="0"/><hh:tabPr id="1" autoTabLeft="1" autoTabRight="0"/><hh:tabPr id="2" autoTabLeft="0" autoTabRight="1"/></hh:tabProperties><hh:numberings itemCnt="1"><hh:numbering id="1" start="0"><hh:paraHead start="1" level="1" align="LEFT" useInstWidth="1" autoIndent="1" widthAdjust="0" textOffsetType="PERCENT" textOffset="50" numFormat="DIGIT" charPrIDRef="4294967295" checkable="0">^1.</hh:paraHead><hh:paraHead start="1" level="2" align="LEFT" useInstWidth="1" autoIndent="1" widthAdjust="0" textOffsetType="PERCENT" textOffset="50" numFormat="HANGUL_SYLLABLE" charPrIDRef="4294967295" checkable="0">^2.</hh:paraHead><hh:paraHead start="1" level="3" align="LEFT" useInstWidth="1" autoIndent="1" widthAdjust="0" textOffsetType="PERCENT" textOffset="50" numFormat="DIGIT" charPrIDRef="4294967295" checkable="0">^3)</hh:paraHead><hh:paraHead start="1" level="4" align="LEFT" useInstWidth="1" autoIndent="1" widthAdjust="0" textOffsetType="PERCENT" textOffset="50" numFormat="HANGUL_SYLLABLE" charPrIDRef="4294967295" checkable="0">^4)</hh:paraHead><hh:paraHead start="1" level="5" align="LEFT" useInstWidth="1" autoIndent="1" widthAdjust="0" textOffsetType="PERCENT" textOffset="50" numFormat="DIGIT" charPrIDRef="4294967295" checkable="0">(^5)</hh:paraHead><hh:paraHead start="1" level="6" align="LEFT" useInstWidth="1" autoIndent="1" widthAdjust="0" textOffsetType="PERCENT" textOffset="50" numFormat="HANGUL_SYLLABLE" charPrIDRef="4294967295" checkable="0">(^6)</hh:paraHead><hh:paraHead start="1" level="7" align="LEFT" useInstWidth="1" autoIndent="1" widthAdjust="0" textOffsetType="PERCENT" textOffset="50" numFormat="CIRCLED_DIGIT" charPrIDRef="4294967295" checkable="1">^7</hh:paraHead><hh:paraHead start="1" level="8" align="LEFT" useInstWidth="1" autoIndent="1" widthAdjust="0" textOffsetType="PERCENT" textOffset="50" numFormat="CIRCLED_HANGUL_SYLLABLE" charPrIDRef="4294967295" checkable="1">^8</hh:paraHead><hh:paraHead start="1" level="9" align="LEFT" useInstWidth="1" autoIndent="1" widthAdjust="0" textOffsetType="PERCENT" textOffset="50" numFormat="HANGUL_JAMO" charPrIDRef="4294967295" checkable="0"/><hh:paraHead start="1" level="10" align="LEFT" useInstWidth="1" autoIndent="1" widthAdjust="0" textOffsetType="PERCENT" textOffset="50" numFormat="ROMAN_SMALL" charPrIDRef="4294967295" checkable="1"/></hh:numbering></hh:numberings><hh:paraProperties itemCnt="20"><hh:paraPr id="0" tabPrIDRef="0" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="NONE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="BREAK_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="1" tabPrIDRef="0" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="NONE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="1500" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="3000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="2" tabPrIDRef="1" condense="20" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="OUTLINE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="1000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="2000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="3" tabPrIDRef="1" condense="20" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="OUTLINE" idRef="0" level="1"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="2000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="4000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="4" tabPrIDRef="1" condense="20" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="OUTLINE" idRef="0" level="2"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="3000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="6000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="5" tabPrIDRef="1" condense="20" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="OUTLINE" idRef="0" level="3"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="4000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="8000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="6" tabPrIDRef="1" condense="20" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="OUTLINE" idRef="0" level="4"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="5000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="10000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="7" tabPrIDRef="1" condense="20" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="OUTLINE" idRef="0" level="5"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="6000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="12000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="8" tabPrIDRef="1" condense="20" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="OUTLINE" idRef="0" level="6"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="7000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="14000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="9" tabPrIDRef="0" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="NONE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="BREAK_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="150" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="150" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="10" tabPrIDRef="0" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="NONE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="-1310" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="130" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="-2620" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="130" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="11" tabPrIDRef="0" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="LEFT" vertical="BASELINE"/><hh:heading type="NONE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="BREAK_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="130" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="130" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="12" tabPrIDRef="1" condense="20" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="LEFT" vertical="BASELINE"/><hh:heading type="NONE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="BREAK_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="1200" unit="HWPUNIT"/><hc:next value="300" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="2400" unit="HWPUNIT"/><hc:next value="600" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="13" tabPrIDRef="2" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="LEFT" vertical="BASELINE"/><hh:heading type="NONE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="BREAK_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="700" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="1400" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="14" tabPrIDRef="2" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="LEFT" vertical="BASELINE"/><hh:heading type="NONE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="BREAK_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="1100" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="700" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="2200" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="1400" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="15" tabPrIDRef="2" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="LEFT" vertical="BASELINE"/><hh:heading type="NONE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="BREAK_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="2200" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="700" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="4400" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="1400" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="16" tabPrIDRef="1" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/paragraph"><hh:heading type="OUTLINE" idRef="0" level="8"/></hp:case><hp:default><hh:heading type="NONE" idRef="0" level="0"/></hp:default></hp:switch><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="9000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="18000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="17" tabPrIDRef="1" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/paragraph"><hh:heading type="OUTLINE" idRef="0" level="9"/></hp:case><hp:default><hh:heading type="NONE" idRef="0" level="0"/></hp:default></hp:switch><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="10000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="20000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="18" tabPrIDRef="1" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/paragraph"><hh:heading type="OUTLINE" idRef="0" level="7"/></hp:case><hp:default><hh:heading type="NONE" idRef="0" level="0"/></hp:default></hp:switch><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="8000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="16000" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="0" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="160" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr><hh:paraPr id="19" tabPrIDRef="0" condense="0" fontLineHeight="0" snapToGrid="1" suppressLineNumbers="0" checked="0" textDir="LTR"><hh:align horizontal="JUSTIFY" vertical="BASELINE"/><hh:heading type="NONE" idRef="0" level="0"/><hh:breakSetting breakLatinWord="KEEP_WORD" breakNonLatinWord="KEEP_WORD" widowOrphan="0" keepWithNext="0" keepLines="0" pageBreakBefore="0" lineWrap="BREAK"/><hh:autoSpacing eAsianEng="0" eAsianNum="0"/><hp:switch><hp:case hp:required-namespace="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar"><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="800" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="150" unit="HWPUNIT"/></hp:case><hp:default><hh:margin><hc:intent value="0" unit="HWPUNIT"/><hc:left value="0" unit="HWPUNIT"/><hc:right value="0" unit="HWPUNIT"/><hc:prev value="0" unit="HWPUNIT"/><hc:next value="1600" unit="HWPUNIT"/></hh:margin><hh:lineSpacing type="PERCENT" value="150" unit="HWPUNIT"/></hp:default></hp:switch><hh:border borderFillIDRef="2" offsetLeft="0" offsetRight="0" offsetTop="0" offsetBottom="0" connect="0" ignoreMargin="0"/></hh:paraPr></hh:paraProperties><hh:styles itemCnt="23"><hh:style id="0" type="PARA" name="바탕글" engName="Normal" paraPrIDRef="0" charPrIDRef="0" nextStyleIDRef="0" langID="1042" lockForm="0"/><hh:style id="1" type="PARA" name="본문" engName="Body" paraPrIDRef="1" charPrIDRef="0" nextStyleIDRef="1" langID="1042" lockForm="0"/><hh:style id="2" type="PARA" name="개요 1" engName="Outline 1" paraPrIDRef="2" charPrIDRef="0" nextStyleIDRef="2" langID="1042" lockForm="0"/><hh:style id="3" type="PARA" name="개요 2" engName="Outline 2" paraPrIDRef="3" charPrIDRef="0" nextStyleIDRef="3" langID="1042" lockForm="0"/><hh:style id="4" type="PARA" name="개요 3" engName="Outline 3" paraPrIDRef="4" charPrIDRef="0" nextStyleIDRef="4" langID="1042" lockForm="0"/><hh:style id="5" type="PARA" name="개요 4" engName="Outline 4" paraPrIDRef="5" charPrIDRef="0" nextStyleIDRef="5" langID="1042" lockForm="0"/><hh:style id="6" type="PARA" name="개요 5" engName="Outline 5" paraPrIDRef="6" charPrIDRef="0" nextStyleIDRef="6" langID="1042" lockForm="0"/><hh:style id="7" type="PARA" name="개요 6" engName="Outline 6" paraPrIDRef="7" charPrIDRef="0" nextStyleIDRef="7" langID="1042" lockForm="0"/><hh:style id="8" type="PARA" name="개요 7" engName="Outline 7" paraPrIDRef="8" charPrIDRef="0" nextStyleIDRef="8" langID="1042" lockForm="0"/><hh:style id="9" type="PARA" name="개요 8" engName="Outline 8" paraPrIDRef="18" charPrIDRef="0" nextStyleIDRef="9" langID="1042" lockForm="0"/><hh:style id="10" type="PARA" name="개요 9" engName="Outline 9" paraPrIDRef="16" charPrIDRef="0" nextStyleIDRef="10" langID="1042" lockForm="0"/><hh:style id="11" type="PARA" name="개요 10" engName="Outline 10" paraPrIDRef="17" charPrIDRef="0" nextStyleIDRef="11" langID="1042" lockForm="0"/><hh:style id="12" type="CHAR" name="쪽 번호" engName="Page Number" paraPrIDRef="0" charPrIDRef="1" nextStyleIDRef="0" langID="1042" lockForm="0"/><hh:style id="13" type="CHAR" name="줄 번호" engName="Line Number" paraPrIDRef="0" charPrIDRef="0" nextStyleIDRef="0" langID="1042" lockForm="0"/><hh:style id="14" type="PARA" name="머리말" engName="Header" paraPrIDRef="9" charPrIDRef="2" nextStyleIDRef="14" langID="1042" lockForm="0"/><hh:style id="15" type="PARA" name="각주" engName="Footnote" paraPrIDRef="10" charPrIDRef="3" nextStyleIDRef="15" langID="1042" lockForm="0"/><hh:style id="16" type="PARA" name="미주" engName="Endnote" paraPrIDRef="10" charPrIDRef="3" nextStyleIDRef="16" langID="1042" lockForm="0"/><hh:style id="17" type="PARA" name="메모" engName="Memo" paraPrIDRef="11" charPrIDRef="4" nextStyleIDRef="17" langID="1042" lockForm="0"/><hh:style id="18" type="PARA" name="차례 제목" engName="TOC Heading" paraPrIDRef="12" charPrIDRef="5" nextStyleIDRef="18" langID="1042" lockForm="0"/><hh:style id="19" type="PARA" name="차례 1" engName="TOC 1" paraPrIDRef="13" charPrIDRef="6" nextStyleIDRef="19" langID="1042" lockForm="0"/><hh:style id="20" type="PARA" name="차례 2" engName="TOC 2" paraPrIDRef="14" charPrIDRef="6" nextStyleIDRef="20" langID="1042" lockForm="0"/><hh:style id="21" type="PARA" name="차례 3" engName="TOC 3" paraPrIDRef="15" charPrIDRef="6" nextStyleIDRef="21" langID="1042" lockForm="0"/><hh:style id="22" type="PARA" name="캡션" engName="Caption" paraPrIDRef="19" charPrIDRef="0" nextStyleIDRef="22" langID="1042" lockForm="0"/></hh:styles></hh:refList><hh:compatibleDocument targetProgram="HWP201X"><hh:layoutCompatibility/></hh:compatibleDocument><hh:docOption><hh:linkinfo path="" pageInherit="0" footnoteInherit="0"/></hh:docOption><hh:metaTag>{"name":""}</hh:metaTag><hh:trackchageConfig flags="56"/></hh:head></script>
+<script type="text/plain" id="hwpx-secpre"><?xml version='1.0' encoding='UTF-8' standalone='yes'?>
+<hs:sec xmlns:ha="http://www.hancom.co.kr/hwpml/2011/app" xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph" xmlns:hp10="http://www.hancom.co.kr/hwpml/2016/paragraph" xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section" xmlns:hc="http://www.hancom.co.kr/hwpml/2011/core" xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head" xmlns:hhs="http://www.hancom.co.kr/hwpml/2011/history" xmlns:hm="http://www.hancom.co.kr/hwpml/2011/master-page" xmlns:hpf="http://www.hancom.co.kr/schema/2011/hpf" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf/" xmlns:ooxmlchart="http://www.hancom.co.kr/hwpml/2016/ooxmlchart" xmlns:hwpunitchar="http://www.hancom.co.kr/hwpml/2016/HwpUnitChar" xmlns:epub="http://www.idpf.org/2007/ops" xmlns:config="urn:oasis:names:tc:opendocument:xmlns:config:1.0"><hp:p id="0" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="0"><hp:secPr id="" textDirection="HORIZONTAL" spaceColumns="1134" tabStop="8000" tabStopVal="4000" tabStopUnit="HWPUNIT" outlineShapeIDRef="1" memoShapeIDRef="0" textVerticalWidthHead="0" masterPageCnt="0"><hp:grid lineGrid="0" charGrid="0" wonggojiFormat="0"/><hp:startNum pageStartsOn="BOTH" page="0" pic="0" tbl="0" equation="0"/><hp:visibility hideFirstHeader="0" hideFirstFooter="0" hideFirstMasterPage="0" border="SHOW_ALL" fill="SHOW_ALL" hideFirstPageNum="0" hideFirstEmptyLine="0" showLineNumber="0"/><hp:lineNumberShape restartType="0" countBy="0" distance="0" startNumber="0"/><hp:pagePr landscape="WIDELY" width="59528" height="84186" gutterType="LEFT_ONLY"><hp:margin header="4252" footer="4252" gutter="0" left="8504" right="8504" top="5668" bottom="4252"/></hp:pagePr><hp:footNotePr><hp:autoNumFormat type="DIGIT" userChar="" prefixChar="" suffixChar=")" supscript="0"/><hp:noteLine length="-1" type="SOLID" width="0.12 mm" color="#000000"/><hp:noteSpacing betweenNotes="283" belowLine="567" aboveLine="850"/><hp:numbering type="CONTINUOUS" newNum="1"/><hp:placement place="EACH_COLUMN" beneathText="0"/></hp:footNotePr><hp:endNotePr><hp:autoNumFormat type="DIGIT" userChar="" prefixChar="" suffixChar=")" supscript="0"/><hp:noteLine length="14692344" type="SOLID" width="0.12 mm" color="#000000"/><hp:noteSpacing betweenNotes="0" belowLine="567" aboveLine="850"/><hp:numbering type="CONTINUOUS" newNum="1"/><hp:placement place="END_OF_DOCUMENT" beneathText="0"/></hp:endNotePr><hp:pageBorderFill type="BOTH" borderFillIDRef="1" textBorder="PAPER" headerInside="0" footerInside="0" fillArea="PAPER"><hp:offset left="1417" right="1417" top="1417" bottom="1417"/></hp:pageBorderFill><hp:pageBorderFill type="EVEN" borderFillIDRef="1" textBorder="PAPER" headerInside="0" footerInside="0" fillArea="PAPER"><hp:offset left="1417" right="1417" top="1417" bottom="1417"/></hp:pageBorderFill><hp:pageBorderFill type="ODD" borderFillIDRef="1" textBorder="PAPER" headerInside="0" footerInside="0" fillArea="PAPER"><hp:offset left="1417" right="1417" top="1417" bottom="1417"/></hp:pageBorderFill></hp:secPr><hp:ctrl><hp:colPr id="" type="NEWSPAPER" layout="LEFT" colCount="1" sameSz="1" sameGap="0"/></hp:ctrl></hp:run><hp:run charPrIDRef="0"><hp:t/></hp:run><hp:linesegarray><hp:lineseg textpos="0" vertpos="0" vertsize="1000" textheight="1000" baseline="850" spacing="600" horzpos="0" horzsize="42520" flags="393216"/></hp:linesegarray></hp:p></script>
+<script>
+(() => {
+  // ====================== 유틸 ======================
+  const $ = s => document.querySelector(s);
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const COLORS = ['#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#ec4899',
+                  '#14b8a6','#f43f5e','#84cc16','#a855f7','#0ea5e9','#fb923c','#4ade80','#e879f9'];
+  const HAIR = ['#3f2a14','#111827','#7c3f1d','#d97706','#4b5563','#0f172a'];
+
+  // ====================== 설정 화면: 실제 게임풍 달리기 배경 ======================
+  // GIF 파일을 따로 쓰지 않고 캔버스로 계속 그려서 단일 HTML을 유지한다.
+  const setupCv = $('#setupBg'), setupCtx = setupCv.getContext('2d');
+  const PREVIEW_RUNNERS = Array.from({ length: 10 }, (_, i) => ({
+    lane: i, color: COLORS[i], hair: HAIR[(i * 7) % HAIR.length],
+    off: (i * 0.097 + 0.04) % 1, speed: 0.035 + (i % 4) * 0.0035, phase: i * 1.7,
+  }));
+  function setupProject(lane, z, w, h) {
+    const hy = h * .30, d = 1 + z * 9, tw = w * 1.9 / d;
+    return { x: w / 2 + ((lane + .5) / PREVIEW_RUNNERS.length - .5) * tw, y: hy + (h - hy) / d, s: 1 / d, tw };
+  }
+  function setupRound(g, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+  }
+  function drawSetupRunner(g, r, z, t, w, h) {
+    const p = setupProject(r.lane, z, w, h), size = Math.max(7, Math.min(66, p.tw / 10 * .62));
+    const bob = Math.abs(Math.sin(t * 13 + r.phase)) * size * .16, x = p.x, y = p.y - bob;
+    g.save(); g.translate(x, y);
+    g.globalAlpha = Math.min(1, z * 10, (1 - z) * 12);
+    g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(0, bob + 2, size * .42, size * .13, 0, 0, 7); g.fill();
+    const leg = Math.sin(t * 13 + r.phase) * size * .28;
+    g.strokeStyle = '#1f2937'; g.lineWidth = Math.max(2, size * .12); g.lineCap = 'round';
+    g.beginPath(); g.moveTo(-size * .16, -size * .32); g.lineTo(-size * .18, leg); g.stroke();
+    g.beginPath(); g.moveTo(size * .16, -size * .32); g.lineTo(size * .18, -leg); g.stroke();
+    g.fillStyle = r.color; setupRound(g, -size * .34, -size * .95, size * .68, size * .65, size * .17); g.fill();
+    g.strokeStyle = r.color;
+    g.beginPath(); g.moveTo(-size * .32, -size * .78); g.lineTo(-size * .52, -size * .78 + leg); g.stroke();
+    g.beginPath(); g.moveTo(size * .32, -size * .78); g.lineTo(size * .52, -size * .78 - leg); g.stroke();
+    g.fillStyle = '#fde68a'; g.beginPath(); g.arc(0, -size * 1.2, size * .32, 0, 7); g.fill();
+    g.fillStyle = r.hair; g.beginPath(); g.arc(0, -size * 1.25, size * .32, Math.PI, 0); g.lineTo(size * .32, -size * 1.08); g.lineTo(-size * .32, -size * 1.08); g.fill();
+    if (size > 16) {
+      const label = `${r.lane + 1}번`;
+      g.font = `800 ${Math.max(9, size * .28)}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      const lw = g.measureText(label).width + 10;
+      g.fillStyle = 'rgba(255,255,255,.92)'; setupRound(g, -lw / 2, -size * 1.78, lw, size * .36 + 5, 5); g.fill();
+      g.fillStyle = '#111827'; g.fillText(label, 0, -size * 1.78 + (size * .36 + 5) / 2);
+    }
+    g.restore();
+  }
+  function drawSetupPreview(now) {
+    requestAnimationFrame(drawSetupPreview);
+    if ($('#setup').style.display === 'none') return;
+    const dpr = Math.min(1.5, devicePixelRatio || 1), w = innerWidth, h = innerHeight;
+    if (setupCv.width !== Math.round(w * dpr) || setupCv.height !== Math.round(h * dpr)) {
+      setupCv.width = Math.round(w * dpr); setupCv.height = Math.round(h * dpr);
+      setupCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    const g = setupCtx, t = now / 1000, hy = h * .30;
+    const sky = g.createLinearGradient(0, 0, 0, hy);
+    sky.addColorStop(0, '#4d8ff7'); sky.addColorStop(1, '#b9e4ff');
+    g.fillStyle = sky; g.fillRect(0, 0, w, hy);
+    g.fillStyle = '#ffe36e'; g.beginPath(); g.arc(w * .82, hy * .32, 36, 0, 7); g.fill();
+    g.fillStyle = 'rgba(255,255,255,.85)';
+    for (let i = 0; i < 6; i++) {
+      const x = ((i * 310 - t * 12) % (w + 240) + w + 240) % (w + 240) - 120, y = 35 + (i % 3) * 45, r = 24 + (i % 2) * 9;
+      g.beginPath(); g.arc(x, y, r, 0, 7); g.arc(x + r, y - 7, r * .8, 0, 7); g.arc(x + r * 1.8, y + 2, r * .9, 0, 7); g.fill();
+    }
+    g.fillStyle = '#3dd274'; g.fillRect(0, hy, w, h - hy);
+    g.fillStyle = '#d87932'; g.beginPath(); g.moveTo(-w * .45, h); g.lineTo(w * 1.45, h); g.lineTo(w * .57, hy); g.lineTo(w * .43, hy); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.65)'; g.lineWidth = 2;
+    for (let i = 0; i <= 10; i++) {
+      const f = i / 10 - .5;
+      g.beginPath(); g.moveTo(w / 2 + f * w * 1.9, h); g.lineTo(w / 2 + f * w * .14, hy); g.stroke();
+    }
+    for (let z = ((t * .17) % .1); z < 1; z += .1) {
+      const p = setupProject(0, z, w, h);
+      g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = Math.max(.5, 2 * p.s);
+      g.beginPath(); g.moveTo(p.x - p.tw / 2, p.y); g.lineTo(p.x + p.tw / 2, p.y); g.stroke();
+    }
+    // 실제 게임처럼 아이템과 장애물이 트랙 위로 다가왔다가 지나간다.
+    const icons = ['⚡', '🚀', '🌀', '🪨', '🍌', '💤'];
+    const things = icons.map((icon, i) => ({ icon, lane: (i * 3 + 1) % 10, z: (t * (.025 + i * .001) + i * .16 + .2) % 1 }));
+    things.sort((a, b) => b.z - a.z).forEach(o => {
+      const p = setupProject(o.lane, o.z, w, h), fs = Math.max(10, Math.min(48, p.tw / 10 * .55));
+      g.globalAlpha = Math.min(1, o.z * 8, (1 - o.z) * 10); g.font = `${fs}px sans-serif`; g.textAlign = 'center'; g.textBaseline = 'bottom';
+      g.fillText(o.icon, p.x, p.y); g.globalAlpha = 1;
+    });
+    PREVIEW_RUNNERS
+      .map(r => ({ r, z: (r.off + t * r.speed) % 1 }))
+      .sort((a, b) => b.z - a.z)
+      .forEach(o => drawSetupRunner(g, o.r, o.z, t, w, h));
+  }
+  requestAnimationFrame(drawSetupPreview);
+
+  // ====================== 소리 (내장 합성음, 외부 파일 없음) ======================
+  let audio = null, muted = false, master = null, sfxBus = null, bgmBus = null, noiseBuf = null;
+  function ensureAudio() {
+    if (!audio) {
+      try {
+        audio = new (window.AudioContext || window.webkitAudioContext)();
+        master = audio.createGain(); master.connect(audio.destination);
+        sfxBus = audio.createGain(); sfxBus.connect(master);
+        bgmBus = audio.createGain(); bgmBus.gain.value = 0.55; bgmBus.connect(master);
+        noiseBuf = audio.createBuffer(1, audio.sampleRate, audio.sampleRate);
+        const ch = noiseBuf.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = Math.random() * 2 - 1;
+        master.gain.value = muted ? 0 : 1;
+      } catch (e) { audio = null; }
+    }
+    if (audio && audio.state === 'suspended') audio.resume();
+  }
+  function tone(freq, dur, type = 'square', vol = 0.08, delay = 0, slide = 0, bus = sfxBus) {
+    if (!audio) return;
+    const t0 = audio.currentTime + Math.max(0, delay), o = audio.createOscillator(), g = audio.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t0);
+    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t0 + dur);
+    g.gain.setValueAtTime(vol, t0); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + dur + 0.02);
+  }
+  // 필터를 거친 잡음: 박수·함성·휙 소리·하이햇 등
+  function noise(dur, vol, filter = 'bandpass', freq = 1000, delay = 0, bus = sfxBus, q = 1, sweepTo = 0, attack = 0.005) {
+    if (!audio) return;
+    const t0 = audio.currentTime + Math.max(0, delay), src = audio.createBufferSource(), f = audio.createBiquadFilter(), g = audio.createGain();
+    src.buffer = noiseBuf; src.loop = true;
+    f.type = filter; f.frequency.setValueAtTime(freq, t0); f.Q.value = q;
+    if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t0 + dur);
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(vol, t0 + attack); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    src.connect(f); f.connect(g); g.connect(bus); src.start(t0, Math.random() * 0.5); src.stop(t0 + dur + 0.05);
+  }
+  const SFX = {
+    count: () => { tone(660, 0.15, 'square', 0.08); noise(0.08, 0.1, 'highpass', 3000); },
+    go: () => { tone(880, 0.6, 'square', 0.09); tone(1320, 0.6, 'square', 0.05); noise(0.5, 0.25, 'highpass', 1500, 0, sfxBus, 1, 0, 0.002); },
+    good: () => { tone(600, 0.1, 'square', 0.06); tone(900, 0.15, 'square', 0.06, 0.08); },
+    rocket: () => { tone(200, 0.6, 'sawtooth', 0.06, 0, 900); noise(0.8, 0.18, 'lowpass', 400, 0, sfxBus, 1, 3000, 0.05); },
+    warp: () => { tone(400, 0.3, 'sine', 0.08, 0, 1200); noise(0.35, 0.08, 'bandpass', 600, 0, sfxBus, 4, 5000); },
+    bad: () => { tone(300, 0.3, 'sawtooth', 0.06, 0, -200); tone(90, 0.25, 'sine', 0.2, 0, -40); },
+    slip: () => tone(700, 0.35, 'sine', 0.07, 0, -500),
+    sleep: () => { tone(500, 0.3, 'sine', 0.05); tone(380, 0.4, 'sine', 0.05, 0.3); },
+    finish: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.25, 'square', 0.06, i * 0.1)),
+    reveal: () => { tone(784, 0.15, 'square', 0.07); tone(1046, 0.4, 'square', 0.07, 0.15); },
+    drum: () => { tone(120, 0.08, 'triangle', 0.12, 0, -60); noise(0.06, 0.06, 'bandpass', 1800, 0, sfxBus, 2); },
+    // 관중 함성: 여러 대역의 잡음이 부풀었다가 잦아듦 + 휘파람
+    cheer: (big = false) => {
+      const d = big ? 2.4 : 1.4;
+      noise(d, big ? 0.3 : 0.18, 'bandpass', 900, 0, sfxBus, 0.7, 0, 0.25);
+      noise(d * 0.9, big ? 0.18 : 0.1, 'bandpass', 2200, 0.05, sfxBus, 1.2, 0, 0.3);
+      if (big) { tone(1800, 0.35, 'sine', 0.05, 0.2, 700); tone(2000, 0.3, 'sine', 0.04, 0.7, -600); }
+    },
+    whoosh: () => noise(0.45, 0.22, 'bandpass', 300, 0, sfxBus, 2, 3500, 0.12),
+    tape: () => { noise(0.12, 0.35, 'highpass', 2500, 0, sfxBus, 1, 0, 0.002); tone(160, 0.2, 'triangle', 0.15, 0, -80); },
+    spurt: () => { [0, 0.18, 0.36].forEach(d => tone(988, 0.14, 'square', 0.07, d)); tone(1319, 0.5, 'square', 0.07, 0.54); },
+    photo: () => { noise(0.04, 0.3, 'highpass', 4000); noise(0.05, 0.25, 'highpass', 3000, 0.09); },
+    speedUp: () => tone(300, 0.35, 'sawtooth', 0.06, 0, 900),
+    speedDown: () => tone(900, 0.3, 'sawtooth', 0.05, 0, -600),
+    fanfare: () => { [[523, 0], [659, 0.15], [784, 0.3], [1046, 0.45], [784, 0.7], [1046, 0.85]].forEach(([f, d]) => { tone(f, d === 0.85 ? 0.8 : 0.18, 'square', 0.07, d); tone(f / 2, 0.2, 'triangle', 0.08, d); }); },
+  };
+
+  // ====================== 배경음악 (16스텝 시퀀서, 경기 중에만) ======================
+  const midi = m => 440 * Math.pow(2, (m - 69) / 12);
+  const MELODY = [
+    69, 0, 72, 0, 76, 0, 74, 72, 69, 0, 67, 0, 69, 0, 0, 0,
+    65, 0, 69, 0, 72, 0, 74, 72, 69, 0, 65, 0, 67, 0, 0, 0,
+    64, 0, 67, 0, 72, 0, 76, 74, 72, 0, 71, 0, 72, 0, 0, 0,
+    71, 0, 74, 0, 79, 0, 77, 76, 74, 0, 71, 0, 74, 0, 76, 0,
+  ];
+  const CHORDS = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];
+  const BGM = { enabled: true, playing: false, step: 0, next: 0, timer: 0, intense: false };
+  function bgmStart() {
+    if (!audio || BGM.playing) return;
+    BGM.playing = true; BGM.step = 0; BGM.next = audio.currentTime + 0.05;
+    BGM.timer = setInterval(bgmTick, 25);
+  }
+  function bgmStop() { BGM.playing = false; clearInterval(BGM.timer); }
+  function bgmTick() {
+    if (!audio || !BGM.playing) return;
+    const bpm = (BGM.intense ? 160 : 132) * (timeScale > 1.5 ? 1.25 : 1), stepDur = 60 / bpm / 4;
+    while (BGM.next < audio.currentTime + 0.12) {
+      if (BGM.enabled) bgmStep(BGM.step, BGM.next - audio.currentTime, stepDur);
+      BGM.step = (BGM.step + 1) % 64; BGM.next += stepDur;
+    }
+  }
+  function bgmStep(st, d, sd) {
+    const bar = Math.floor(st / 16), s = st % 16, ch = CHORDS[bar], hot = BGM.intense;
+    if (s % 2 === 0) tone(midi(ch[0] - 12 + (s % 4 === 2 ? 12 : 0)), sd * 1.8, 'triangle', 0.16, d, 0, bgmBus);
+    if (MELODY[st]) tone(midi(MELODY[st] + (hot ? 12 : 0)), sd * (MELODY[st + 1] === 0 ? 1.9 : 0.95), 'square', 0.045, d, 0, bgmBus);
+    if (hot) tone(midi(ch[s % 3] + 12), sd * 0.8, 'triangle', 0.035, d, 0, bgmBus);
+    if (s % 8 === 0 || (hot && s % 4 === 0)) tone(150, 0.12, 'sine', 0.35, d, -110, bgmBus);
+    if (s % 8 === 4) noise(0.12, 0.12, 'bandpass', 1800, d, bgmBus, 0.8);
+    if (hot || s % 2 === 0) noise(0.04, hot ? 0.05 : 0.035, 'highpass', 7000, d, bgmBus);
+  }
+
+  function setMuted(m) { muted = m; $('#muteBtn').textContent = muted ? '🔇' : '🔊'; if (master) master.gain.value = muted ? 0 : 1; }
+  $('#muteBtn').onclick = () => setMuted(!muted);
+  $('#bgmBtn').onclick = () => { BGM.enabled = !BGM.enabled; $('#bgmBtn').style.opacity = BGM.enabled ? 1 : 0.4; };
+
+  // ====================== 설정 화면 ======================
+  const namesEl = $('#names');
+  let raceLength = 'normal', itemAmount = 'normal', mode = 'pick';
+  document.querySelectorAll('.mode .btn').forEach(b => b.onclick = () => {
+    document.querySelectorAll('.mode .btn').forEach(x => x.classList.remove('on')); b.classList.add('on'); mode = b.dataset.mode;
+    $('#pickOpts').style.display = mode === 'pick' ? '' : 'none';
+    $('#orderOpts').style.display = mode === 'order' ? '' : 'none';
+  });
+  function parseNames() { return namesEl.value.split(/[\n,]/).map(s => s.trim()).filter(Boolean); }
+  function updateCount() { const n = parseNames().length; $('#nameCount').textContent = n ? `(${n}명)` : ''; }
+  namesEl.addEventListener('input', updateCount);
+  $('#genNumbers').onclick = () => {
+    const n = clamp(+$('#numCount').value || 20, 2, 60);
+    namesEl.value = Array.from({ length: n }, (_, i) => `${i + 1}번`).join('\n'); updateCount();
+  };
+  $('#clearNames').onclick = () => { namesEl.value = ''; updateCount(); };
+  document.querySelectorAll('.len').forEach(b => b.onclick = () => { document.querySelectorAll('.len').forEach(x => x.classList.remove('on')); b.classList.add('on'); raceLength = b.dataset.len; });
+  document.querySelectorAll('.amt').forEach(b => b.onclick = () => { document.querySelectorAll('.amt').forEach(x => x.classList.remove('on')); b.classList.add('on'); itemAmount = b.dataset.amt; });
+
+  $('#startBtn').onclick = () => {
+    const names = parseNames();
+    if (names.length < 2) { alert('참가자를 2명 이상 입력해 주세요.'); return; }
+    if (names.length > 60) { alert('참가자는 최대 60명까지 가능해요.'); return; }
+    const w = clamp(Math.floor(+$('#winnerCount').value || 1), 1, names.length);
+    $('#winnerCount').value = w;
+    ensureAudio(); startRace(names, w, mode);
+  };
+  $('#againBtn').onclick = () => { ensureAudio(); startRace(lastNames, lastWinners, raceMode); };
+  $('#backBtn').onclick = () => { stopConfetti(); bgmStop(); $('#result').style.display = 'none'; $('#game').style.display = 'none'; $('#setup').style.display = 'flex'; };
+
+  // ====================== 게임 상태 ======================
+  const cv = $('#cv'), ctx = cv.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = cv.clientWidth; H = cv.clientHeight; cv.width = W * DPR; cv.height = H * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+
+  let runners = [], items = [], effects = [], finished = [], scenery = [];
+  let lastNames = [], lastWinners = 1, winnerCount = 1, raceMode = 'pick';
+  // 순서만 뽑기 모드에서는 1~3위만 금색 강조
+  const highlightN = () => raceMode === 'pick' ? winnerCount : Math.min(3, runners.length);
+  let state = 'idle';
+  let raceT = 0, lastRanking = [], resultTime = null;
+  let timeScale = 1, holding = false, holdT = 0;
+  let spurt = false, leaderRef = null, lastLeadChange = 0, lastFinishT = -9;
+  let focus = null, eyeView = false, camX = 0, fp = 0; // fp: 0 = 위에서 보기, 1 = 눈 시점
+  let raceDuration = 20, lastT = 0, countdownT = 0, camZ = -14, camSpeed = 0, shake = 0, rafId = 0, tick = 0, lastCountShown = 9;
+  const TRACK_LEN = 200, RUNOUT = 14, VIEW = 70;
+
+  // 아이템 정의: 종류, 좋은지, 발동 함수
+  const ITEMS = {
+    boost:  { good: true,  label: '가속!',     color: '#fde047', sfx: 'good',   apply: r => { r.boost = Math.max(r.boost, 1.2); } },
+    rocket: { good: true,  label: '로켓!!',    color: '#fb923c', sfx: 'rocket', apply: r => { r.rocket = 1.4; } },
+    warp:   { good: true,  label: '워프!',     color: '#c084fc', sfx: 'warp',   apply: r => { r.warpFrom = r.z; r.z += 12; r.warpT = 0.6; } },
+    rock:   { good: false, label: '쿵!',       color: '#f87171', sfx: 'bad',    apply: r => { r.stun = 1.0; } },
+    banana: { good: false, label: '미끌~',     color: '#fde047', sfx: 'slip',   apply: r => { r.slip = 1.2; } },
+    mud:    { good: false, label: '진흙 푹!',  color: '#a16207', sfx: 'bad',    apply: r => { r.mud = 2.0; } },
+    sleep:  { good: false, label: '쿨쿨…',     color: '#93c5fd', sfx: 'sleep',  apply: r => { r.sleep = 1.6; } },
+  };
+  const GOOD = ['boost', 'boost', 'rocket', 'warp'], BAD = ['rock', 'banana', 'mud', 'sleep'];
+
+  function startRace(names, w, m) {
+    lastNames = names; lastWinners = w; raceMode = m; winnerCount = m === 'order' ? names.length : w;
+    stopConfetti();
+    $('#setup').style.display = 'none'; $('#result').style.display = 'none'; $('#game').style.display = 'block';
+    resize();
+    $('#hudInfo').innerHTML = m === 'order'
+      ? `🔢 순서 뽑기 · 참가자 <b>${names.length}명</b>`
+      : `🎯 뽑을 인원 <b>${w}명</b> / 참가자 <b>${names.length}명</b>`;
+    $('#hudOrder').textContent = '도착: -';
+
+    raceDuration = { short: 14, normal: 22, long: 32 }[raceLength];
+    const baseSpeed = TRACK_LEN / raceDuration;
+    const lanes = names.map((_, i) => i);
+    for (let i = lanes.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [lanes[i], lanes[j]] = [lanes[j], lanes[i]]; }
+    runners = names.map((name, i) => ({
+      name, lane: lanes[i], color: COLORS[i % COLORS.length], hair: HAIR[(i * 7) % HAIR.length],
+      z: 0, base: baseSpeed, boost: 0, rocket: 0, stun: 0, slip: 0, mud: 0, sleep: 0, warpT: 0, warpFrom: 0,
+      bob: Math.random() * Math.PI * 2, noise: Math.random() * 1000, done: false, rank: 0, finishSpeed: 0,
+    }));
+    finished = []; effects = []; items = [];
+    buildLive();
+
+    // 아이템 배치
+    const per = { few: [2, 3], normal: [4, 6], many: [7, 10] }[itemAmount];
+    runners.forEach(r => {
+      const n = per[0] + Math.floor(Math.random() * (per[1] - per[0] + 1));
+      let z = rand(12, 20);
+      for (let k = 0; k < n && z < TRACK_LEN - 12; k++) {
+        const good = Math.random() < 0.5;
+        const type = good ? GOOD[Math.floor(Math.random() * GOOD.length)] : BAD[Math.floor(Math.random() * BAD.length)];
+        items.push({ lane: r.lane, z, type, taken: false, t: 0, spin: Math.random() * 6 });
+        z += rand(14, 26) * (6 / n + 0.6);
+      }
+    });
+    // 길가 풍경 + 남은 거리 표지판
+    scenery = [];
+    for (let z = -20; z < TRACK_LEN + RUNOUT + 40; z += 6) {
+      scenery.push({ z, side: -1, kind: Math.random() < 0.7 ? 'tree' : 'flag', off: rand(0.62, 0.95), v: Math.random() });
+      scenery.push({ z: z + 3, side: 1, kind: Math.random() < 0.7 ? 'tree' : 'flag', off: rand(0.62, 0.95), v: Math.random() });
+    }
+    for (let z = 50; z < TRACK_LEN; z += 50) scenery.push({ z, side: 1, kind: 'sign', off: 0.6, text: `${TRACK_LEN - z}m` });
+
+    raceT = 0; timeScale = 1; holding = false; holdT = 0; updateSpeedHud();
+    spurt = false; leaderRef = null; lastLeadChange = 0; lastFinishT = -9;
+    bgmStop(); BGM.intense = false; $('#banner').style.opacity = 0;
+    bannerQueue = []; bannerBusyUntil = 0; bannerStart = -1e9; clearTimeout(bannerTimer);
+    camZ = -14; camX = 0; fp = 0; focus = null; eyeView = false; camSpeed = 0; shake = 0; state = 'countdown'; countdownT = 2.999; lastCountShown = 9; lastT = performance.now();
+    cancelAnimationFrame(rafId); rafId = requestAnimationFrame(loop);
+  }
+
+  // ====================== 업데이트 ======================
+  function updateRunners(dt) {
+    raceT += dt;
+    runners.forEach(r => {
+      if (r.done) {
+        if (r.z < TRACK_LEN + RUNOUT - 1) { r.z += r.finishSpeed * dt; r.finishSpeed *= 0.97; r.bob += dt * 10; }
+        return;
+      }
+      r.noise += dt * 1.6;
+      let s = r.base * (1 + 0.2 * Math.sin(r.noise) * Math.sin(r.noise * 0.41 + r.lane) + rand(-0.06, 0.06));
+      let bobRate = 12;
+      if (spurt) s *= 1.12; // 마지막 스퍼트는 모두에게 똑같이 적용
+      if (r.boost > 0)  { r.boost -= dt;  s *= 1.8; bobRate = 18; }
+      if (r.rocket > 0) { r.rocket -= dt; s *= 2.6; bobRate = 4; }
+      if (r.mud > 0)    { r.mud -= dt;    s *= 0.45; bobRate = 6; }
+      if (r.slip > 0)   { r.slip -= dt;   s *= 0.3; bobRate = 2; }
+      if (r.stun > 0)   { r.stun -= dt;   s *= 0.05; }
+      if (r.sleep > 0)  { r.sleep -= dt;  s = 0; bobRate = 0; }
+      if (r.warpT > 0)  r.warpT -= dt;
+      r.z += s * dt; r.bob += dt * bobRate;
+
+      items.forEach(it => {
+        if (!it.taken && it.lane === r.lane && r.z >= it.z - 0.5 && r.z < it.z + 6) {
+          it.taken = true; it.t = 0;
+          const def = ITEMS[it.type];
+          def.apply(r); SFX[def.sfx]();
+          effects.push({ type: 'text', r, text: def.label, color: def.color, t: 0 });
+        }
+      });
+
+      if (r.z >= TRACK_LEN) {
+        r.done = true; r.finishSpeed = Math.max(s, r.base); r.rank = finished.length + 1; r.time = raceT; finished.push(r);
+        effects.push({ type: 'text', r, text: `${r.rank}위!`, color: r.rank <= highlightN() ? '#fbbf24' : '#e2e8f0', t: 0, big: true });
+        if (r.rank <= highlightN()) SFX.finish(); else SFX.good();
+        const close = raceT - lastFinishT < 0.15 && r.rank <= highlightN() + 1;
+        lastFinishT = raceT;
+        if (r.rank === 1) { SFX.tape(); SFX.cheer(true); shake = Math.max(shake, 0.5); banner(`🏆 1위 골인! ${r.name}`, 'linear-gradient(90deg,#f59e0b,#ffd54a)'); }
+        else if (close) { SFX.photo(); banner('📸 사진 판독급 접전!', 'linear-gradient(90deg,#4c2fb8,#4cc9ff)'); }
+        else if (raceMode === 'pick' && r.rank === winnerCount && winnerCount < runners.length) { SFX.cheer(true); banner('🎉 당첨자 확정!', 'linear-gradient(90deg,#16a34a,#3ee08f)'); }
+        else if (r.rank === runners.length) { SFX.cheer(); banner(`👏 마지막 주자 골인! ${r.name}`, 'linear-gradient(90deg,#6366f1,#a855f7)'); }
+        else if (r.rank <= highlightN()) SFX.cheer();
+        $('#hudOrder').textContent = '도착: ' + finished.slice(-4).map(f => f.rank + '. ' + f.name).join('  ');
+      }
+    });
+    // 선두 교체 / 마지막 스퍼트 알림
+    if (!finished.length && state === 'running') {
+      let top = null; runners.forEach(r => { if (!top || r.z > top.z) top = r; });
+      if (top !== leaderRef) {
+        const nowReal = performance.now() / 1000;
+        if (leaderRef && raceT > 2.5 && nowReal - lastLeadChange > 2.5) {
+          SFX.whoosh(); banner(`🔥 선두 교체! ${top.name}`); lastLeadChange = nowReal;
+        }
+        leaderRef = top;
+      }
+      if (!spurt && top.z >= TRACK_LEN * 0.78) {
+        spurt = true; BGM.intense = true; SFX.spurt(); SFX.cheer();
+        banner('🏁 마지막 스퍼트!', 'linear-gradient(90deg,#dc2626,#ff3b5c)');
+      }
+    }
+    items.forEach(it => { it.spin += dt * 3; if (it.taken) it.t += dt; });
+    effects.forEach(e => e.t += dt);
+    effects = effects.filter(e => e.t < 1.1);
+
+    // 카메라
+    // 아직 달리는 사람 기준으로 따라가야 뒤처진 참가자도 화면에 잡힘
+    const racing = runners.some(r => !r.done) ? runners.filter(r => !r.done) : runners;
+    let lead = -Infinity, last = Infinity;
+    racing.forEach(r => { lead = Math.max(lead, r.z); last = Math.min(last, r.z); });
+    let target = clamp(last - 5, lead - 38, lead - 18);
+    target = clamp(target, -14, TRACK_LEN - 26);
+    let targetX = 0, rate = 3;
+    fp += ((focus && eyeView ? 1 : 0) - fp) * Math.min(1, dt * 2.5);
+    if (focus && eyeView) { target = focus.z + 0.15 + nearDist(); targetX = laneFrac(focus.lane); rate = 10; }
+    else if (focus) { target = clamp(focus.z - 6, -14, TRACK_LEN + RUNOUT - 10); targetX = laneFrac(focus.lane); }
+    const prev = camZ;
+    camZ += (target - camZ) * Math.min(1, dt * rate);
+    camX += (targetX - camX) * Math.min(1, dt * rate);
+    camSpeed = (camZ - prev) / Math.max(dt, 0.001);
+    shake = Math.max(0, shake - dt * 3);
+    if (runners.some(r => r.rocket > 0 && r.z > camZ)) shake = Math.max(shake, 0.6);
+
+    // 두 모드 모두 마지막 참가자가 들어온 뒤 결과 발표
+    if (finished.length >= runners.length && state === 'running') { state = 'done'; setTimeout(showResult, 2000); }
+  }
+
+  // ====================== 실시간 순위표 ======================
+  const ROW_H = 30;
+  let liveRows = new Map(), liveTimer = 0;
+  function buildLive() {
+    const list = $('#liveList'); list.innerHTML = ''; liveRows.clear(); liveTimer = 0;
+    $('#live').classList.toggle('small', W < 700);
+    runners.forEach(r => {
+      const el = document.createElement('div'); el.className = 'lv';
+      el.innerHTML = `<div class="bar" style="background:${r.color}"></div><span class="rk"></span><span class="dot" style="background:${r.color}"></span><span class="nm">${escapeHtml(r.name)}</span><span class="st"></span>`;
+      el.onclick = () => focus !== r ? setFocus(r, false) : !eyeView ? setFocus(r, true) : setFocus(null);
+      list.appendChild(el);
+      liveRows.set(r, { el, bar: el.querySelector('.bar'), rk: el.querySelector('.rk'), st: el.querySelector('.st') });
+    });
+    setFocus(null);
+  }
+  function setFocus(r, eye = false) {
+    focus = r; eyeView = !!r && eye;
+    $('#viewAll').style.display = r ? 'block' : 'none';
+    $('#liveTip').textContent = !r ? '이름을 누르면 따라가기, 한 번 더 누르면 눈 시점'
+      : eyeView ? '👁️ 눈 시점 · 한 번 더 누르면 전체 보기' : '🎥 따라가기 · 한 번 더 누르면 눈 시점';
+    liveRows.forEach((row, key) => { row.el.classList.toggle('focus', key === r && !eyeView); row.el.classList.toggle('eye', key === r && eyeView); });
+    updateLive(true);
+  }
+  $('#viewAll').onclick = () => setFocus(null);
+  function currentOrder() {
+    return runners.slice().sort((a, b) => (a.done && b.done) ? a.rank - b.rank : a.done ? -1 : b.done ? 1 : b.z - a.z);
+  }
+  function updateLive(force, dt = 0) {
+    liveTimer -= dt;
+    if (!force && liveTimer > 0) return;
+    liveTimer = 0.2;
+    const order = currentOrder();
+    const maxRows = Math.max(3, Math.floor((H - 140 - 75) / ROW_H));
+    $('#liveList').style.height = Math.min(order.length, maxRows) * ROW_H + 'px';
+    $('#liveCnt').textContent = `완주 ${finished.length}/${runners.length}`;
+    order.forEach((r, i) => {
+      const row = liveRows.get(r); if (!row) return;
+      row.el.style.transform = `translateY(${i * ROW_H}px)`;
+      row.el.style.visibility = i < maxRows ? 'visible' : 'hidden';
+      row.rk.textContent = i < 3 ? medal(i + 1) : i + 1;
+      row.bar.style.width = clamp(r.z / TRACK_LEN, 0, 1) * 100 + '%';
+      row.st.textContent = r.done ? '🏁' : Math.round(clamp(r.z / TRACK_LEN, 0, 1) * 100) + '%';
+      row.el.classList.toggle('fin', r.done);
+      row.el.classList.toggle('win', r.done && r.rank <= highlightN());
+    });
+  }
+
+  // ====================== 투영 ======================
+  // camZ는 화면에 그리는 가장 가까운 면, 눈은 그보다 nearDist() 만큼 뒤에 있음
+  const HORIZON_Y = () => H * 0.34;
+  const EYE = VIEW / 9, NEAR_FP = 1.2;
+  const nearDist = () => EYE + (NEAR_FP - EYE) * fp;
+  // 눈 시점 카메라 높이 = 캐릭터 머리 높이 (캐릭터 크기가 레인 폭에 비례하므로 같이 계산)
+  const eyeHeight = () => 1.25 * 0.55 * W * 1.9 / (runners.length * (H - HORIZON_Y()));
+  const camHeight = () => 1 + (eyeHeight() - 1) * fp;
+  function project(laneFrac, z) {
+    const dz = Math.max(0.05, z - camZ + nearDist()), s = EYE / dz, hy = HORIZON_Y();
+    const y = hy + (H - hy) * camHeight() * s, trackW = W * 1.9 * s;
+    return { x: W / 2 + (laneFrac - camX) * trackW, y, s, trackW, t: (z - camZ) / VIEW };
+  }
+  const laneFrac = lane => (lane + 0.5) / runners.length - 0.5;
+
+  // ====================== 그리기 ======================
+  function draw() {
+    const hy = HORIZON_Y();
+    ctx.save();
+    if (shake > 0) ctx.translate(rand(-6, 6) * shake, rand(-4, 4) * shake);
+    if (focus && fp > 0.01) {
+      // 눈 시점: 달릴 때 머리 흔들림, 넘어짐/미끄러짐/잠듦에 따라 화면이 기울어짐
+      const f = focus, moving = !f.stun && !f.sleep && (!f.done || f.finishSpeed > 1);
+      let rot = 0, ox = 0, oy = moving ? Math.abs(Math.sin(f.bob)) * 7 : 0;
+      if (f.stun > 0) { rot += Math.sin(f.stun * 14) * 0.35; oy += Math.sin(f.stun * Math.PI) * 40; }
+      if (f.slip > 0) { rot += Math.sin(f.slip * 25) * 0.15; ox += Math.sin(f.slip * 25) * 30; }
+      if (f.sleep > 0) rot += 0.45 * Math.min(1, f.sleep * 2);
+      ctx.translate(W / 2, H / 2); ctx.rotate(rot * fp); ctx.translate(-W / 2 + ox * fp, -H / 2 + oy * fp);
+    }
+
+    const sky = ctx.createLinearGradient(0, 0, 0, hy);
+    sky.addColorStop(0, '#3b82f6'); sky.addColorStop(1, '#bae6fd');
+    ctx.fillStyle = sky; ctx.fillRect(-W, -H, W * 3, hy + H + 2);
+    ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.arc(W * 0.8, hy * 0.35, 34, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.9)';
+    for (let i = 0; i < 7; i++) {
+      const cx = ((i * 260 - camZ * 1.5 + tick * 6) % (W + 240) + W + 240) % (W + 240) - 120;
+      cloud(cx, hy * (0.2 + (i % 3) * 0.2), 24 + (i % 3) * 9);
+    }
+    ctx.fillStyle = '#86efac';
+    ctx.beginPath(); ctx.moveTo(-10, hy);
+    for (let x = 0; x <= W + 40; x += 40) ctx.lineTo(x, hy - 18 - 22 * Math.abs(Math.sin(x * 0.011 + 1)) - 10 * Math.sin(x * 0.03));
+    ctx.lineTo(W + 10, hy); ctx.fill();
+    const grass = ctx.createLinearGradient(0, hy, 0, H);
+    grass.addColorStop(0, '#4ade80'); grass.addColorStop(1, '#15803d');
+    ctx.fillStyle = grass; ctx.fillRect(-W, hy, W * 3, H * 2);
+
+    // 트랙
+    const p0 = project(0, camZ), p1 = project(0, camZ + VIEW * 6);
+    ctx.fillStyle = '#d97a33';
+    ctx.beginPath();
+    ctx.moveTo(p0.x - p0.trackW / 2, p0.y + 10); ctx.lineTo(p0.x + p0.trackW / 2, p0.y + 10);
+    ctx.lineTo(p1.x + p1.trackW / 2, p1.y); ctx.lineTo(p1.x - p1.trackW / 2, p1.y); ctx.closePath(); ctx.fill();
+    for (const side of [-1, 1]) {
+      for (let z = Math.floor(camZ / 4) * 4; z < camZ + VIEW; z += 4) {
+        const a = project(side * 0.5, Math.max(z, camZ)), b = project(side * 0.5, Math.min(z + 4, camZ + VIEW));
+        ctx.strokeStyle = (Math.floor(z / 4) % 2) ? '#fff' : '#ef4444'; ctx.lineWidth = 6 * a.s + 1;
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+    }
+    const n = runners.length;
+    ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.lineWidth = 1.5;
+    for (let i = 1; i < n; i++) {
+      const f = i / n - 0.5, a = project(f, camZ), b = project(f, camZ + VIEW * 6);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y + 10); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(255,255,255,.22)';
+    for (let z = Math.ceil(camZ / 10) * 10; z < camZ + VIEW; z += 10) {
+      const q = project(0, z); ctx.lineWidth = 2 * q.s + 0.5;
+      ctx.beginPath(); ctx.moveTo(q.x - q.trackW / 2, q.y); ctx.lineTo(q.x + q.trackW / 2, q.y); ctx.stroke();
+    }
+    if (0 > camZ && 0 < camZ + VIEW) { const q = project(0, 0); ctx.fillStyle = '#fff'; ctx.fillRect(q.x - q.trackW / 2, q.y - 1, q.trackW, 4 * q.s + 1); }
+    drawFinishGround();
+
+    // 깊이 정렬
+    const list = [];
+    scenery.forEach(s => { if (s.z > camZ + 0.5 && s.z < camZ + VIEW) list.push({ z: s.z, kind: 'scenery', o: s }); });
+    items.forEach(it => { if (it.z > camZ + 0.5 && it.z < camZ + VIEW && !(it.taken && it.t > 0.6)) list.push({ z: it.z, kind: 'item', o: it }); });
+    runners.forEach(r => { if (r.z > camZ + 0.5 && r.z < camZ + VIEW) list.push({ z: r.z, kind: 'runner', o: r }); });
+    if (TRACK_LEN > camZ && TRACK_LEN < camZ + VIEW) list.push({ z: TRACK_LEN, kind: 'finish' });
+    list.sort((a, b) => b.z - a.z);
+    list.forEach(e => {
+      if (e.kind === 'scenery') drawScenery(e.o);
+      else if (e.kind === 'item') drawItem(e.o);
+      else if (e.kind === 'runner') drawRunner(e.o);
+      else drawFinish();
+    });
+
+    // 효과 텍스트
+    effects.forEach(e => {
+      let x, y, fs;
+      if (e.r === focus && fp > 0.5) { x = W / 2; y = H * 0.3 - e.t * 50; fs = e.big ? 72 : 48; }
+      else if (e.r.z < camZ + 0.5) return;
+      else {
+        const p = project(laneFrac(e.r.lane), e.r.z);
+        fs = Math.min(60, (e.big ? 26 : 18) * (0.5 + p.s * 0.5) + 6); x = p.x;
+        y = p.y - (110 + e.t * 60) * Math.min(3, 0.3 + p.s * 0.7);
+      }
+      ctx.globalAlpha = clamp(1.2 - e.t, 0, 1);
+      ctx.font = `900 ${fs}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4; ctx.strokeStyle = '#111'; ctx.fillStyle = e.color;
+      ctx.strokeText(e.text, x, y); ctx.fillText(e.text, x, y);
+      ctx.globalAlpha = 1;
+    });
+    ctx.restore();
+    drawPovOverlay();
+    if (spurt && finished.length < Math.min(3, runners.length)) {
+      const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.4, W / 2, H / 2, Math.max(W, H) * 0.75);
+      g.addColorStop(0, 'rgba(255,40,60,0)'); g.addColorStop(1, `rgba(255,40,60,${0.18 + 0.14 * Math.abs(Math.sin(tick * 4))})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
+
+    drawSpeedLines();
+    drawMinimap();
+  }
+
+  function drawPovOverlay() {
+    if (!focus) return;
+    const f = focus, a = fp;
+    if (a > 0.05) {
+      const edge = (color, alpha) => {
+        const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+        g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, color);
+        ctx.globalAlpha = alpha * a; ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+      };
+      if (f.rocket > 0) edge('rgba(251,146,60,1)', 0.7);
+      else if (f.boost > 0) edge('rgba(253,224,71,1)', 0.55);
+      if (f.mud > 0) {
+        ctx.globalAlpha = 0.85 * a; ctx.fillStyle = '#78350f';
+        for (let i = 0; i < 9; i++) { const x = (i / 8) * W, r = 50 + 30 * Math.sin(i * 2.3); ctx.beginPath(); ctx.arc(x, H + 10, r, 0, 7); ctx.fill(); }
+        ctx.globalAlpha = 1;
+      }
+      if (f.sleep > 0) {
+        ctx.globalAlpha = 0.6 * a * Math.min(1, f.sleep * 2); ctx.fillStyle = '#0b1030'; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+        ctx.fillStyle = '#bfdbfe'; ctx.font = '900 56px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('Z z z…', W / 2, H * 0.45 - (tick % 1) * 20);
+      }
+      if (f.stun > 0) {
+        ctx.font = '40px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        for (let i = 0; i < 4; i++) { const t = tick * 5 + i * 1.57; ctx.fillText('⭐', W / 2 + Math.cos(t) * 160, H * 0.28 + Math.sin(t) * 40); }
+      }
+    }
+    const label = (fp > 0.5 ? '👁️ ' : '🎥 ') + f.name + (fp > 0.5 ? '의 눈 시점' : ' 따라가기');
+    ctx.font = 'bold 15px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw = ctx.measureText(label).width + 24;
+    ctx.fillStyle = fp > 0.5 ? 'rgba(255,95,162,.9)' : 'rgba(76,201,255,.9)';
+    roundRect(W / 2 - tw / 2, H - 82, tw, 28, 14); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillText(label, W / 2, H - 68);
+  }
+
+  // 화면 가장자리 스피드 라인 (카메라 속도에 비례)
+  function drawSpeedLines() {
+    const base = TRACK_LEN / raceDuration;
+    const k = clamp(camSpeed / base * (timeScale > 1 ? 1.8 : 1), 0, 3);
+    if (k < 0.3) return;
+    ctx.strokeStyle = `rgba(255,255,255,${0.12 * k})`; ctx.lineWidth = 2;
+    const cx = W / 2, cy = H * 0.45;
+    for (let i = 0; i < 14; i++) {
+      const a = (i / 14) * Math.PI * 2 + tick * 0.3;
+      if (Math.abs(Math.sin(a)) < 0.35) continue; // 위아래는 비움
+      const r0 = Math.max(W, H) * (0.42 - 0.08 * k + (i % 3) * 0.04), r1 = r0 + 60 + 70 * k;
+      ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0 * 0.7); ctx.lineTo(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1 * 0.7); ctx.stroke();
+    }
+  }
+
+  function cloud(x, y, r) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, 7); ctx.arc(x + r * 0.9, y - r * 0.3, r * 0.8, 0, 7); ctx.arc(x + r * 1.8, y, r * 0.9, 0, 7);
+    ctx.arc(x + r * 0.9, y + r * 0.3, r * 0.8, 0, 7); ctx.fill();
+  }
+
+  function drawScenery(s) {
+    const p = project(s.side * s.off, s.z), k = p.s;
+    if (s.kind === 'tree') {
+      const h = 90 * k, r = 34 * k;
+      ctx.fillStyle = '#92400e'; ctx.fillRect(p.x - 6 * k, p.y - h, 12 * k, h);
+      ctx.fillStyle = s.v < 0.5 ? '#16a34a' : '#15803d';
+      ctx.beginPath(); ctx.arc(p.x, p.y - h, r, 0, 7); ctx.arc(p.x - r * 0.7, p.y - h + r * 0.5, r * 0.8, 0, 7); ctx.arc(p.x + r * 0.7, p.y - h + r * 0.5, r * 0.8, 0, 7); ctx.fill();
+    } else if (s.kind === 'flag') {
+      const h = 110 * k;
+      ctx.fillStyle = '#e5e7eb'; ctx.fillRect(p.x - 2 * k, p.y - h, 4 * k, h);
+      ctx.fillStyle = s.v < 0.5 ? '#f43f5e' : '#3b82f6';
+      const wave = Math.sin(tick * 4 + s.z) * 6 * k;
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - h); ctx.lineTo(p.x + 40 * k * s.side, p.y - h + 12 * k + wave); ctx.lineTo(p.x, p.y - h + 26 * k); ctx.fill();
+    } else { // 남은 거리 표지판
+      const h = 120 * k, bw = 90 * k, bh = 40 * k;
+      ctx.fillStyle = '#78350f'; ctx.fillRect(p.x - 4 * k, p.y - h, 8 * k, h);
+      ctx.fillStyle = '#fef3c7'; ctx.strokeStyle = '#78350f'; ctx.lineWidth = Math.max(1, 3 * k);
+      roundRect(p.x - bw / 2, p.y - h - bh * 0.3, bw, bh, 6 * k); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#78350f'; ctx.font = `900 ${Math.max(7, 22 * k)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(s.text, p.x, p.y - h + bh * 0.2);
+    }
+  }
+
+  // 결승선 바닥: 두꺼운 체크무늬 띠 + 결승선 너머 구역은 어둡게
+  function drawFinishGround() {
+    if (TRACK_LEN + 2 < camZ || TRACK_LEN > camZ + VIEW) return;
+    const quad = (pa, fa0, fa1, pb, fb0, fb1) => {
+      ctx.beginPath(); ctx.moveTo(pa.x + fa0 * pa.trackW, pa.y); ctx.lineTo(pa.x + fa1 * pa.trackW, pa.y);
+      ctx.lineTo(pb.x + fb1 * pb.trackW, pb.y); ctx.lineTo(pb.x + fb0 * pb.trackW, pb.y); ctx.closePath(); ctx.fill();
+    };
+    const ra = project(0, Math.max(TRACK_LEN, camZ)), rb = project(0, camZ + VIEW * 6);
+    ctx.fillStyle = 'rgba(40,20,110,.25)'; quad(ra, -0.5, 0.5, rb, -0.5, 0.5);
+    const rows = 3, cols = 14, depth = 4.5;
+    for (let r = 0; r < rows; r++) {
+      const z0 = TRACK_LEN + r * depth / rows, z1 = z0 + depth / rows;
+      if (z1 <= camZ) continue;
+      const pa = project(0, Math.max(z0, camZ)), pb = project(0, z1);
+      for (let c = 0; c < cols; c++) {
+        ctx.fillStyle = (r + c) % 2 ? '#111827' : '#ffffff';
+        const f0 = c / cols - 0.5, f1 = f0 + 1 / cols + 0.002;
+        quad(pa, f0, f1, pb, f0, f1);
+      }
+    }
+  }
+
+  // 결승선 게이트: 줄무늬 기둥 + 현수막 + 결승 테이프(1등이 지나가면 끊어짐)
+  function drawFinish() {
+    const q = project(0, TRACK_LEN), k = q.s, cx = q.x, half = q.trackW / 2;
+    const ph = 420 * k, pw = Math.max(4, 26 * k), bh = 110 * k;
+    const L = cx - half - pw * 1.2, R = cx + half + pw * 0.2;
+    const tapeY = q.y - 40 * k;
+    ctx.lineCap = 'round';
+    if (!finished.length) {
+      ctx.strokeStyle = '#ff2d55'; ctx.lineWidth = Math.max(2, 6 * k);
+      ctx.beginPath(); ctx.moveTo(cx - half, tapeY); ctx.quadraticCurveTo(cx, tapeY + 10 * k, cx + half, tapeY); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = `900 ${Math.max(6, 14 * k)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('GOAL', cx, tapeY + 5 * k);
+    } else {
+      ctx.strokeStyle = '#ff2d55'; ctx.lineWidth = Math.max(2, 6 * k);
+      for (const side of [-1, 1]) {
+        const x0 = cx + side * half, sway = Math.sin(tick * 3 + side) * 12 * k;
+        ctx.beginPath(); ctx.moveTo(x0, tapeY); ctx.quadraticCurveTo(x0 - side * 30 * k, tapeY + 30 * k, x0 - side * 45 * k + sway, tapeY + 70 * k); ctx.stroke();
+      }
+    }
+    for (const x of [L, R]) {
+      for (let i = 0; i < 12; i++) { ctx.fillStyle = i % 2 ? '#ffffff' : '#ef4444'; ctx.fillRect(x, q.y - ph + i * ph / 12, pw, ph / 12 + 0.5); }
+      const fx = x + pw / 2, fy = q.y - ph - 4 * k, fw = 80 * k, fh = 52 * k, wave = Math.sin(tick * 5 + x) * 5 * k;
+      ctx.fillStyle = '#374151'; ctx.fillRect(fx - 1.5 * k, fy - fh * 1.6, Math.max(1, 3 * k), fh * 1.6);
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) {
+        ctx.fillStyle = (i + j) % 2 ? '#111' : '#fff';
+        ctx.fillRect(fx + i * fw / 4, fy - fh * 1.6 + j * fh / 3 + wave * (i / 4), fw / 4 + 0.5, fh / 3 + 0.5);
+      }
+    }
+    const bx = L, bw = R + pw - L, by = q.y - ph;
+    const g = ctx.createLinearGradient(0, by, 0, by + bh);
+    g.addColorStop(0, '#ff3b5c'); g.addColorStop(1, '#c81e4a');
+    ctx.fillStyle = g; ctx.fillRect(bx, by, bw, bh);
+    const cs = Math.max(2, 14 * k), cn = Math.max(4, Math.floor(bw / cs));
+    for (let i = 0; i < cn; i++) for (const yy of [by - cs, by + bh]) { ctx.fillStyle = i % 2 ? '#111' : '#fff'; ctx.fillRect(bx + i * bw / cn, yy, bw / cn + 0.5, cs); }
+    ctx.font = `900 ${Math.max(8, 64 * k)}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = Math.max(2, 8 * k); ctx.strokeStyle = '#4a0418'; ctx.fillStyle = '#ffd54a';
+    ctx.strokeText('🏁 결승선 FINISH 🏁', cx, by + bh / 2); ctx.fillText('🏁 결승선 FINISH 🏁', cx, by + bh / 2);
+    ctx.lineCap = 'butt';
+    // 멀리 있을 때도 읽히도록 최소 크기가 보장된 표지
+    if (64 * k < 22) {
+      const fs = 16, label = '🏁 결승선', ty = by - cs - 26 - Math.abs(Math.sin(tick * 3)) * 6;
+      ctx.font = `900 ${fs}px sans-serif`;
+      const tw = ctx.measureText(label).width + 20;
+      ctx.fillStyle = '#ffd54a'; ctx.strokeStyle = '#4a0418'; ctx.lineWidth = 2;
+      roundRect(cx - tw / 2, ty - 13, tw, 26, 13); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx - 7, ty + 13); ctx.lineTo(cx + 7, ty + 13); ctx.lineTo(cx, ty + 22); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#4a0418'; ctx.fillText(label, cx, ty);
+    }
+  }
+
+  function drawItem(it) {
+    const p = project(laneFrac(it.lane), it.z), n = runners.length, k = p.s;
+    const size = clamp(p.trackW / n * 0.5, 6, 40 + fp * 3000) * 1.2;
+    ctx.save(); ctx.translate(p.x, p.y);
+    if (it.taken) { ctx.globalAlpha = clamp(1 - it.t * 1.8, 0, 1); ctx.scale(1 + it.t * 2, 1 + it.t * 2); }
+    const shadow = (w, h) => { ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, 1, w, h, 0, 0, 7); ctx.fill(); };
+    const hover = Math.sin(it.spin * 2) * 4 * k;
+    ctx.lineWidth = Math.max(1, 3 * k);
+    switch (it.type) {
+      case 'boost':
+        shadow(size * 0.5, size * 0.16); ctx.translate(0, -size * 0.7 - hover);
+        ctx.fillStyle = '#fef08a'; ctx.strokeStyle = '#f59e0b';
+        ctx.beginPath(); ctx.arc(0, 0, size * 0.55, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#f59e0b'; ctx.beginPath();
+        ctx.moveTo(size * 0.1, -size * 0.4); ctx.lineTo(-size * 0.2, size * 0.05); ctx.lineTo(0, size * 0.05);
+        ctx.lineTo(-size * 0.1, size * 0.4); ctx.lineTo(size * 0.2, -size * 0.05); ctx.lineTo(0, -size * 0.05); ctx.closePath(); ctx.fill();
+        break;
+      case 'rocket':
+        shadow(size * 0.4, size * 0.14); ctx.translate(0, -size * 0.8 - hover);
+        ctx.fillStyle = '#ef4444'; ctx.strokeStyle = '#7f1d1d';
+        roundRect(-size * 0.22, -size * 0.45, size * 0.44, size * 0.9, size * 0.2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fca5a5'; ctx.beginPath(); ctx.moveTo(-size * 0.22, -size * 0.3); ctx.lineTo(0, -size * 0.75); ctx.lineTo(size * 0.22, -size * 0.3); ctx.fill();
+        ctx.fillStyle = '#b91c1c'; ctx.beginPath(); ctx.moveTo(-size * 0.22, size * 0.2); ctx.lineTo(-size * 0.45, size * 0.55); ctx.lineTo(-size * 0.22, size * 0.45); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(size * 0.22, size * 0.2); ctx.lineTo(size * 0.45, size * 0.55); ctx.lineTo(size * 0.22, size * 0.45); ctx.fill();
+        ctx.fillStyle = '#bfdbfe'; ctx.beginPath(); ctx.arc(0, -size * 0.1, size * 0.11, 0, 7); ctx.fill();
+        ctx.fillStyle = '#fb923c'; ctx.beginPath(); ctx.moveTo(-size * 0.14, size * 0.45); ctx.lineTo(0, size * (0.75 + Math.random() * 0.2)); ctx.lineTo(size * 0.14, size * 0.45); ctx.fill();
+        break;
+      case 'warp':
+        shadow(size * 0.5, size * 0.16); ctx.translate(0, -size * 0.65 - hover);
+        for (let i = 0; i < 3; i++) {
+          ctx.strokeStyle = ['#c084fc', '#a855f7', '#7c3aed'][i]; ctx.lineWidth = Math.max(1.5, size * 0.1);
+          ctx.beginPath(); ctx.arc(0, 0, size * (0.55 - i * 0.16), it.spin * (1 + i * 0.5), it.spin * (1 + i * 0.5) + 4.2); ctx.stroke();
+        }
+        break;
+      case 'rock':
+        shadow(size * 0.6, size * 0.2);
+        ctx.fillStyle = '#6b7280'; ctx.strokeStyle = '#374151';
+        ctx.beginPath(); ctx.moveTo(-size * 0.55, 0); ctx.lineTo(-size * 0.4, -size * 0.45); ctx.lineTo(-size * 0.05, -size * 0.62);
+        ctx.lineTo(size * 0.4, -size * 0.5); ctx.lineTo(size * 0.58, -size * 0.1); ctx.lineTo(size * 0.45, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#9ca3af'; ctx.beginPath(); ctx.moveTo(-size * 0.3, -size * 0.4); ctx.lineTo(-size * 0.05, -size * 0.52); ctx.lineTo(0, -size * 0.3); ctx.closePath(); ctx.fill();
+        break;
+      case 'banana':
+        shadow(size * 0.5, size * 0.16);
+        ctx.strokeStyle = '#facc15'; ctx.lineWidth = Math.max(3, size * 0.22); ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(0, -size * 0.35, size * 0.45, 0.3, Math.PI - 0.3); ctx.stroke();
+        ctx.strokeStyle = '#a16207'; ctx.lineWidth = Math.max(1, size * 0.06);
+        ctx.beginPath(); ctx.arc(0, -size * 0.35, size * 0.45, 0.4, Math.PI - 0.4); ctx.stroke();
+        break;
+      case 'mud':
+        ctx.fillStyle = '#78350f'; ctx.beginPath(); ctx.ellipse(0, 0, size * 0.75, size * 0.26, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = '#92400e'; ctx.beginPath(); ctx.ellipse(-size * 0.15, -size * 0.05, size * 0.45, size * 0.14, 0, 0, 7); ctx.fill();
+        ctx.fillStyle = '#a16207';
+        for (let i = 0; i < 3; i++) { const a = it.spin + i * 2.1; ctx.beginPath(); ctx.arc(Math.cos(a) * size * 0.4, -size * 0.05 + Math.sin(a) * size * 0.1, size * 0.07, 0, 7); ctx.fill(); }
+        break;
+      case 'sleep':
+        shadow(size * 0.5, size * 0.16); ctx.translate(0, -size * 0.6 - hover);
+        ctx.fillStyle = 'rgba(147,197,253,.75)'; ctx.strokeStyle = '#60a5fa';
+        ctx.beginPath(); ctx.arc(0, 0, size * 0.5, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(size * 0.35, -size * 0.35, size * 0.22, 0, 7); ctx.fill();
+        ctx.fillStyle = '#1e3a8a'; ctx.font = `900 ${size * 0.5}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('Z', 0, 0);
+        break;
+    }
+    ctx.restore();
+  }
+
+  function drawRunner(r) {
+    const p = project(laneFrac(r.lane), r.z), n = runners.length, k = p.s;
+    const size = clamp(p.trackW / n * 0.55, 8, 70 + fp * 3000);
+    const running = !r.done || r.finishSpeed > 1;
+    const stunned = r.stun > 0, sleeping = r.sleep > 0, slipping = r.slip > 0, inMud = r.mud > 0;
+    const bob = running && !stunned && !sleeping && !slipping ? Math.abs(Math.sin(r.bob)) * size * 0.18 : 0;
+    let x = p.x, y = p.y - bob;
+    if (slipping) x += Math.sin(r.slip * 25) * size * 0.25;
+    if (r.rocket > 0) y -= size * 0.25; // 로켓은 살짝 떠서 감
+
+    // 워프 잔상
+    if (r.warpT > 0) {
+      const q = project(laneFrac(r.lane), r.warpFrom);
+      ctx.strokeStyle = `rgba(192,132,252,${r.warpT})`; ctx.lineWidth = Math.max(2, size * 0.3); ctx.setLineDash([6, 6]);
+      ctx.beginPath(); ctx.moveTo(q.x, q.y - size * 0.6); ctx.lineTo(x, y - size * 0.6); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // 가속 스피드 라인
+    if (r.boost > 0 || r.rocket > 0) {
+      ctx.strokeStyle = r.rocket > 0 ? 'rgba(251,146,60,.9)' : 'rgba(253,224,71,.8)'; ctx.lineWidth = Math.max(1.5, 3 * k);
+      for (let i = 0; i < 6; i++) {
+        const ox = (i - 2.5) * size * 0.22, len = size * (0.6 + Math.random() * (r.rocket > 0 ? 1.6 : 0.8));
+        ctx.beginPath(); ctx.moveTo(x + ox, y - size * 0.5); ctx.lineTo(x + ox * 1.3, y - size * 0.5 + len); ctx.stroke();
+      }
+    }
+    // 로켓 불꽃
+    if (r.rocket > 0) {
+      ctx.fillStyle = '#fb923c'; ctx.beginPath(); ctx.moveTo(x - size * 0.2, y); ctx.lineTo(x, y + size * (0.5 + Math.random() * 0.5)); ctx.lineTo(x + size * 0.2, y); ctx.fill();
+      ctx.fillStyle = '#fef08a'; ctx.beginPath(); ctx.moveTo(x - size * 0.1, y); ctx.lineTo(x, y + size * 0.35); ctx.lineTo(x + size * 0.1, y); ctx.fill();
+    }
+
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, bob + 1 + (r.rocket > 0 ? size * 0.25 : 0), size * 0.45, size * 0.15, 0, 0, 7); ctx.fill();
+    if (stunned) { const t = (1 - r.stun) / 1; ctx.translate(0, -Math.sin(t * Math.PI) * size * 0.6); ctx.rotate(t * Math.PI * 2); }
+    if (slipping) ctx.rotate(Math.sin(r.slip * 25) * 0.35);
+    if (sleeping) { ctx.translate(0, size * 0.25); ctx.rotate(1.2); }
+    if (inMud) ctx.translate(0, size * 0.18);
+
+    ctx.strokeStyle = '#1f2937'; ctx.lineWidth = Math.max(2, size * 0.13); ctx.lineCap = 'round';
+    const leg = running && !stunned && !sleeping ? Math.sin(r.bob) * size * 0.3 : 0;
+    ctx.beginPath(); ctx.moveTo(-size * 0.17, -size * 0.35); ctx.lineTo(-size * 0.17, -leg * 0.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(size * 0.17, -size * 0.35); ctx.lineTo(size * 0.17, leg * 0.5); ctx.stroke();
+    ctx.fillStyle = r.color; roundRect(-size * 0.34, -size * 0.95, size * 0.68, size * 0.65, size * 0.18); ctx.fill();
+    if (size > 30) { ctx.fillStyle = 'rgba(255,255,255,.9)'; roundRect(-size * 0.22, -size * 0.85, size * 0.44, size * 0.3, size * 0.06); ctx.fill(); }
+    ctx.strokeStyle = r.color; ctx.lineWidth = Math.max(2, size * 0.12);
+    const arm = r.done && !running ? -size * 0.55 : Math.cos(r.bob) * size * 0.25;
+    ctx.beginPath(); ctx.moveTo(-size * 0.34, -size * 0.8); ctx.lineTo(-size * 0.52, -size * 0.8 + arm); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(size * 0.34, -size * 0.8); ctx.lineTo(size * 0.52, -size * 0.8 - arm); ctx.stroke();
+    ctx.fillStyle = '#fde68a'; ctx.beginPath(); ctx.arc(0, -size * 1.22, size * 0.33, 0, 7); ctx.fill();
+    ctx.fillStyle = r.hair; ctx.beginPath(); ctx.arc(0, -size * 1.26, size * 0.33, Math.PI, 0); ctx.lineTo(size * 0.33, -size * 1.1); ctx.lineTo(-size * 0.33, -size * 1.1); ctx.fill();
+    if (inMud) { ctx.fillStyle = '#78350f'; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc((i - 1.5) * size * 0.18, -size * (0.35 + (i % 2) * 0.2), size * 0.07, 0, 7); ctx.fill(); } }
+    ctx.restore();
+
+    ctx.font = `${size * 0.5}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (stunned) for (let i = 0; i < 3; i++) { const a = tick * 6 + i * 2.1; ctx.fillText('⭐', x + Math.cos(a) * size * 0.5, y - size * 1.7 + Math.sin(a) * size * 0.15); }
+    if (sleeping) { ctx.fillStyle = '#bfdbfe'; ctx.font = `900 ${size * 0.45}px sans-serif`; ctx.fillText('z', x + size * 0.4, y - size * 1.5 - (tick % 1) * size * 0.3); ctx.fillText('Z', x + size * 0.7, y - size * 1.9 - ((tick + 0.5) % 1) * size * 0.3); }
+    if (inMud && Math.random() < 0.3) { ctx.fillStyle = '#92400e'; ctx.beginPath(); ctx.arc(x + rand(-size * 0.5, size * 0.5), y - rand(0, size * 0.4), size * 0.06, 0, 7); ctx.fill(); }
+
+    const fs = clamp(size * 0.32, 10, 16);
+    ctx.font = `bold ${fs}px sans-serif`;
+    const label = r.done ? `${r.rank}위 ${r.name}` : r.name;
+    const tw = ctx.measureText(label).width + 10;
+    ctx.fillStyle = r.done && r.rank <= highlightN() ? '#fbbf24' : 'rgba(255,255,255,.92)';
+    roundRect(x - tw / 2, y - size * 1.62 - fs - 4, tw, fs + 6, 5); ctx.fill();
+    ctx.fillStyle = '#111827'; ctx.fillText(label, x, y - size * 1.62 - fs / 2 - 1);
+    if (r === focus) {
+      const ay = y - size * 1.62 - fs - 14 - Math.abs(Math.sin(tick * 5)) * 6;
+      ctx.fillStyle = '#4cc9ff'; ctx.strokeStyle = '#08223a'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x - 10, ay - 12); ctx.lineTo(x + 10, ay - 12); ctx.lineTo(x, ay); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+  }
+
+  function roundRect(x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.lineTo(x + w - r, y); ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r); ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y); ctx.closePath();
+  }
+
+  function drawMinimap() {
+    const mw = Math.min(W - 40, 560), mx = (W - mw) / 2, my = H - 34, mh = 14;
+    ctx.fillStyle = 'rgba(15,23,42,.7)'; roundRect(mx - 12, my - 14, mw + 24, mh + 28, 10); ctx.fill();
+    ctx.fillStyle = '#334155'; roundRect(mx, my, mw, mh, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(mx + mw - 3, my - 4, 3, mh + 8);
+    ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText('🏁', mx + mw - 8, my - 10);
+    runners.forEach((r, i) => {
+      const px = mx + clamp(r.z / TRACK_LEN, 0, 1) * mw, py = my + mh / 2 + ((i % 3) - 1) * 4;
+      ctx.fillStyle = r.color; ctx.beginPath(); ctx.arc(px, py, 4, 0, 7); ctx.fill();
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+    });
+  }
+
+  // ====================== 루프 ======================
+  function loop(now) {
+    const real = clamp((now - lastT) / 1000, 0, 0.05); lastT = now;
+    if (holding && (state === 'running' || state === 'go')) {
+      holdT += real;
+      if (holdT >= 2 && timeScale === 1) { timeScale = 3; SFX.speedUp(); }
+      updateSpeedHud();
+    }
+    // 배속일 때는 한 프레임을 잘게 나눠 계산해야 아이템을 건너뛰지 않음
+    const sim = real * timeScale, steps = Math.max(1, Math.ceil(sim / 0.05)), dt = sim / steps;
+    for (let i = 0; i < steps; i++) {
+      tick += dt;
+      if (state === 'countdown') {
+        countdownT -= dt;
+        const c = Math.ceil(countdownT);
+        if (c !== lastCountShown) {
+          lastCountShown = c; if (c > 0) SFX.count(); else { SFX.go(); bgmStart(); }
+          const cd = $('#countdown'); cd.textContent = c > 0 ? c : '출발!';
+          cd.classList.remove('pop'); void cd.offsetWidth; cd.classList.add('pop');
+        }
+        if (countdownT <= 0) state = 'go';
+      }
+      if (state === 'go') { countdownT -= dt; updateRunners(dt); if (countdownT <= -0.8) { $('#countdown').textContent = ''; state = 'running'; } }
+      else if (state === 'running' || state === 'done') updateRunners(dt);
+    }
+    if (state === 'go' || state === 'running' || state === 'done') updateLive(false, real);
+    draw();
+    if (state !== 'idle') rafId = requestAnimationFrame(loop);
+  }
+
+  // 배너는 겹치지 않게 차례대로 (최소 1.1초 간격, 밀린 건 최근 2개만 유지)
+  let bannerQueue = [], bannerBusyUntil = 0, bannerTimer = 0, bannerStart = -1e9;
+  // 튀어나옴(0~0.27초) → 유지 → 사라짐(1.45~1.8초)
+  function animateBanner() {
+    const b = $('#banner'), t = (performance.now() - bannerStart) / 1000;
+    let op = 0, sc = 1, dy = 0;
+    if (t < 0.27) { const k = t / 0.27; op = k; sc = 0.4 + 0.68 * k; dy = -30 * (1 - k); }
+    else if (t < 0.45) { op = 1; sc = 1.08 - 0.08 * (t - 0.27) / 0.18; }
+    else if (t < 1.45) op = 1;
+    else if (t < 1.8) { const k = (t - 1.45) / 0.35; op = 1 - k; sc = 1 - 0.05 * k; dy = -10 * k; }
+    b.style.opacity = op; b.style.transform = `translate(-50%, ${dy}px) scale(${sc})`;
+    if (t < 1.8) requestAnimationFrame(animateBanner);
+  }
+  function banner(text, bg) {
+    bannerQueue.push({ text, bg }); if (bannerQueue.length > 2) bannerQueue.shift();
+    pumpBanner();
+  }
+  function pumpBanner() {
+    clearTimeout(bannerTimer);
+    if (!bannerQueue.length) return;
+    const wait = bannerBusyUntil - performance.now();
+    if (wait > 0) { bannerTimer = setTimeout(pumpBanner, wait); return; }
+    const { text, bg } = bannerQueue.shift(), b = $('#banner');
+    b.textContent = text; b.style.background = bg || '';
+    bannerStart = performance.now(); animateBanner();
+    bannerBusyUntil = performance.now() + 1100;
+    if (bannerQueue.length) bannerTimer = setTimeout(pumpBanner, 1100);
+  }
+
+  // ====================== 길게 눌러 배속 ======================
+  function updateSpeedHud() {
+    const hud = $('#speedHud'), on = timeScale > 1;
+    hud.classList.toggle('on', on);
+    hud.style.setProperty('--p', on ? 1 : clamp(holdT / 2, 0, 1));
+    $('#speedTxt').textContent = on ? '⏩ 3배속 진행 중' : holding ? `계속 누르고 있으면 3배속… ${Math.max(0, 2 - holdT).toFixed(1)}초` : '👆 화면을 2초 길게 누르면 3배속';
+  }
+  function holdStart() { if (state === 'idle' || holding) return; holding = true; holdT = 0; updateSpeedHud(); }
+  function holdEnd() {
+    if (!holding) return;
+    holding = false; holdT = 0;
+    if (timeScale > 1) { timeScale = 1; SFX.speedDown(); }
+    updateSpeedHud();
+  }
+  $('#game').addEventListener('pointerdown', e => { if (!e.target.closest('.lv, #viewAll, #muteBtn, #bgmBtn')) holdStart(); });
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(t => $('#game').addEventListener(t, holdEnd));
+  $('#game').addEventListener('contextmenu', e => e.preventDefault());
+  window.addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat && $('#game').style.display === 'block') { e.preventDefault(); holdStart(); } });
+  window.addEventListener('keyup', e => { if (e.code === 'Space') holdEnd(); });
+
+  // ====================== 결과 연출 ======================
+  let confettiRaf = 0, drumTimer = 0, revealTimers = [];
+  function showResult() {
+    const wb = $('#winnersBox'), tbl = $('#rankTable'), pod = $('#podium');
+    wb.innerHTML = '<div class="drum">두구두구두구…</div>'; wb.style.display = ''; tbl.innerHTML = ''; pod.innerHTML = '';
+    $('#rankWrap').style.display = 'none'; $('#resultBtns').style.display = 'none';
+    $('#resultTitle').textContent = '🥁 결과 발표!'; $('#resultSub').textContent = '';
+    $('#result').style.display = 'flex';
+    revealTimers.forEach(clearTimeout); revealTimers = [];
+    bgmStop(); holdEnd();
+    drumTimer = setInterval(SFX.drum, 120);
+
+    // 전체 순위: 완주자는 순위대로, 나머지는 현재 위치 순
+    const ranking = currentOrder();
+    lastRanking = ranking; resultTime = new Date();
+    $('#exportBox').style.display = 'none';
+    const order = raceMode === 'order';
+    const later = (fn, ms) => revealTimers.push(setTimeout(fn, ms));
+
+    const showTable = () => {
+      tbl.innerHTML = ranking.map((r, i) => {
+        const cls = ['ri', i < highlightN() ? 'w' : '', i < 3 ? 'r' + (i + 1) : ''].join(' ');
+        const st = r.done ? (r.time != null ? r.time.toFixed(2) + '초' : '완주') : Math.round(clamp(r.z / TRACK_LEN, 0, 1) * 100) + '%';
+        return `<div class="${cls}" style="animation-delay:${Math.min(i, 30) * 0.03}s"><span class="n">${i + 1}위</span><span class="dot" style="background:${r.color}"></span><span class="nm">${escapeHtml(r.name)}</span><span class="s">${st}</span></div>`;
+      }).join('');
+      $('#rankWrap').style.display = 'block'; $('#resultBtns').style.display = 'flex'; $('#exportBox').style.display = 'flex';
+    };
+
+    later(() => {
+      clearInterval(drumTimer); wb.innerHTML = ''; startConfetti(); SFX.fanfare(); SFX.cheer(true);
+      wb.style.display = order ? 'none' : '';
+      if (order) {
+        // 3위 → 2위 → 1위 순서로 시상대에 등장
+        $('#resultTitle').textContent = '🏆 최종 순위';
+        $('#resultSub').textContent = `참가자 ${ranking.length}명 전체 순서`;
+        const top = ranking.slice(0, 3);
+        const slots = [1, 0, 2].filter(i => top[i]).map(i => {
+          const r = top[i], d = document.createElement('div');
+          d.className = `pd p${i + 1}`; d.style.visibility = 'hidden';
+          d.innerHTML = `<div class="who">${escapeHtml(r.name)}</div><div class="ava" style="background:${r.color}"></div><div class="step">${i + 1}</div>`;
+          pod.appendChild(d); return { i, d };
+        });
+        slots.sort((a, b) => b.i - a.i).forEach((s, k) => later(() => {
+          s.d.style.visibility = 'visible'; s.d.style.animation = 'none'; void s.d.offsetWidth; s.d.style.animation = '';
+          s.i === 0 ? SFX.finish() : SFX.reveal();
+        }, k * 700));
+        later(showTable, slots.length * 700 + 300);
+      } else {
+        const winners = ranking.slice(0, winnerCount);
+        $('#resultTitle').textContent = '🎉 당첨!';
+        $('#resultSub').textContent = `참가자 ${ranking.length}명 중 ${winners.length}명`;
+        winners.forEach((r, i) => later(() => {
+          const d = document.createElement('div'); d.className = 'winner';
+          d.innerHTML = `<small>${medal(i + 1)} ${i + 1}위</small>${escapeHtml(r.name)}`;
+          wb.appendChild(d); SFX.reveal();
+        }, i * 600));
+        later(showTable, winners.length * 600 + 300);
+      }
+    }, 1600);
+  }
+  const medal = n => n === 1 ? '🥇' : n === 2 ? '🥈' : n === 3 ? '🥉' : '';
+  function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // ====================== 결과 저장 (외부 라이브러리 없이 브라우저에서 직접 생성) ======================
+  const pad2 = n => String(n).padStart(2, '0');
+  function resultData() {
+    const t = resultTime || new Date(), pick = raceMode === 'pick';
+    const rows = lastRanking.map((r, i) => ({
+      rank: i + 1, name: r.name, time: r.time != null ? r.time.toFixed(2) + '초' : '-',
+      note: pick ? (i < winnerCount ? '당첨' : '') : (i < 3 ? ['1등', '2등', '3등'][i] : ''),
+    }));
+    return {
+      pick, rows, total: rows.length, winners: pick ? winnerCount : 0,
+      modeLabel: pick ? `당첨자 뽑기 (${winnerCount}명)` : '순서만 뽑기 (전체 순위)',
+      dateStr: `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())} ${pad2(t.getHours())}:${pad2(t.getMinutes())}`,
+      fileStamp: `${t.getFullYear()}${pad2(t.getMonth() + 1)}${pad2(t.getDate())}_${pad2(t.getHours())}${pad2(t.getMinutes())}`,
+      iso: t.toISOString().replace(/\.\d+Z$/, 'Z'),
+    };
+  }
+  const fileName = (d, ext) => `달리기뽑기_결과_${d.fileStamp}.${ext}`;
+  const xmlEsc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+
+  function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1800); }
+  function download(blob, name) {
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    toast(`💾 ${name} 저장됨`);
+  }
+
+  function resultText(d) {
+    const lines = ['🏃 달리기 뽑기 결과', `모드: ${d.modeLabel}`, `일시: ${d.dateStr}`, `참가자: ${d.total}명`, ''];
+    if (d.pick) lines.push(`🎉 당첨자: ${d.rows.slice(0, d.winners).map(r => r.name).join(', ')}`, '');
+    lines.push('[전체 순위]');
+    d.rows.forEach(r => lines.push(`${r.rank}위  ${r.name}  ${r.time}${r.note ? '  ★' + r.note : ''}`));
+    return lines.join('\n');
+  }
+  function resultMarkdown(d) {
+    const md = s => String(s).replace(/\|/g, '\\|');
+    const lines = ['# 🏃 달리기 뽑기 결과', '', `- **모드:** ${d.modeLabel}`, `- **일시:** ${d.dateStr}`, `- **참가자:** ${d.total}명`, ''];
+    if (d.pick) { lines.push('## 🎉 당첨자', ''); d.rows.slice(0, d.winners).forEach(r => lines.push(`${r.rank}. ${medal(r.rank)} **${md(r.name)}** (${r.time})`)); lines.push(''); }
+    lines.push('## 전체 순위', '', '| 순위 | 이름 | 기록 | 비고 |', '|:---:|---|:---:|:---:|');
+    d.rows.forEach(r => lines.push(`| ${r.rank} | ${md(r.name)} | ${r.time} | ${r.note} |`));
+    return lines.join('\n') + '\n';
+  }
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+    }
+    toast('📋 결과를 복사했어요. 원하는 곳에 붙여넣기 하세요');
+  }
+
+  // --- ZIP (무압축) 작성기: XLSX·HWPX 공용 ---
+  const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  const crc32 = b => { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+  function makeZip(files, type) {
+    const enc = new TextEncoder(), out = [], central = [], now = new Date();
+    const dTime = (now.getHours() << 11) | (now.getMinutes() << 5) | (now.getSeconds() >> 1);
+    const dDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+    let offset = 0;
+    files.forEach(f => {
+      const name = enc.encode(f.name), data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, crc = crc32(data);
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0, true); lh.setUint16(8, 0, true);
+      lh.setUint16(10, dTime, true); lh.setUint16(12, dDate, true); lh.setUint32(14, crc, true);
+      lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, name.length, true); lh.setUint16(28, 0, true);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0, true); ch.setUint16(10, 0, true);
+      ch.setUint16(12, dTime, true); ch.setUint16(14, dDate, true); ch.setUint32(16, crc, true);
+      ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, name.length, true);
+      ch.setUint32(42, offset, true);
+      out.push(lh.buffer, name, data); central.push(ch.buffer, name);
+      offset += 30 + name.length + data.length;
+    });
+    const cdSize = central.reduce((s, p) => s + (p.byteLength || p.length), 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cdSize, true); end.setUint32(16, offset, true);
+    return new Blob([...out, ...central, end.buffer], { type });
+  }
+
+  function makeXlsx(d) {
+    const cell = (ref, v, s = 0) => typeof v === 'number'
+      ? `<c r="${ref}" s="${s}"><v>${v}</v></c>`
+      : `<c r="${ref}" t="inlineStr" s="${s}"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+    const rows = [];
+    const add = (cells) => { const r = rows.length + 1; rows.push(`<row r="${r}">${cells.map(([v, s], i) => cell('ABCD'[i] + r, v, s)).join('')}</row>`); };
+    add([['달리기 뽑기 결과', 1]]);
+    add([['모드', 0], [d.modeLabel, 0]]);
+    add([['일시', 0], [d.dateStr, 0]]);
+    add([['참가자', 0], [`${d.total}명`, 0]]);
+    add([]);
+    const headRow = rows.length + 1;
+    add([['순위', 2], ['이름', 2], ['기록', 2], ['비고', 2]]);
+    d.rows.forEach(r => { const s = r.note ? 3 : 0; add([[r.rank, s], [r.name, s], [r.time, s], [r.note, s]]); });
+    const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="10" customWidth="1"/><col min="2" max="2" width="24" customWidth="1"/><col min="3" max="3" width="12" customWidth="1"/><col min="4" max="4" width="10" customWidth="1"/></cols><sheetData>${rows.join('')}</sheetData><autoFilter ref="A${headRow}:D${headRow + d.rows.length}"/></worksheet>`;
+    const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="3"><font><sz val="11"/><name val="맑은 고딕"/></font><font><b/><sz val="16"/><name val="맑은 고딕"/></font><font><b/><sz val="11"/><name val="맑은 고딕"/></font></fonts><fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE9E3FF"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF1B8"/></patternFill></fill></fills><borders count="2"><border/><border><left style="thin"><color rgb="FFBBBBBB"/></left><right style="thin"><color rgb="FFBBBBBB"/></right><top style="thin"><color rgb="FFBBBBBB"/></top><bottom style="thin"><color rgb="FFBBBBBB"/></bottom></border></borders><cellStyleXfs count="1"><xf/></cellStyleXfs><cellXfs count="4"><xf/><xf fontId="1" applyFont="1"/><xf fontId="2" fillId="2" borderId="1" applyFont="1" applyFill="1" applyBorder="1"><alignment horizontal="center"/></xf><xf fontId="2" fillId="3" borderId="1" applyFont="1" applyFill="1" applyBorder="1"/></cellXfs></styleSheet>`;
+    return makeZip([
+      { name: '[Content_Types].xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>` },
+      { name: '_rels/.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+      { name: 'xl/workbook.xml', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="결과" sheetId="1" r:id="rId1"/></sheets><definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'결과'!$A$${headRow}:$D$${headRow + d.rows.length}</definedName></definedNames></workbook>` },
+      { name: 'xl/_rels/workbook.xml.rels', data: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
+      { name: 'xl/worksheets/sheet1.xml', data: sheet },
+      { name: 'xl/styles.xml', data: styles },
+    ], 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  }
+
+  function makeHwpx(d) {
+    const tpl = id => document.getElementById('hwpx-' + id).textContent;
+    let pid = 1000;
+    const nid = () => String(++pid);
+    const para = (text, cp = 0) => `<hp:p id="${nid()}" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="${cp}"><hp:t>${xmlEsc(text)}</hp:t></hp:run></hp:p>`;
+    const widths = [6000, 20520, 8000, 8000];
+    // borderFill 3 = 테두리, 4 = 테두리+노란 음영 / charPr 7 = 굵게 18pt, 8 = 굵게 10pt (틀의 header.xml 기준)
+    const cell = (text, c, r, head, hl) => `<hp:tc name="" header="0" hasMargin="0" protect="0" editable="0" dirty="1" borderFillIDRef="${head || hl ? 4 : 3}"><hp:subList id="" textDirection="HORIZONTAL" lineWrap="BREAK" vertAlign="CENTER" linkListIDRef="0" linkListNextIDRef="0" textWidth="0" textHeight="0" hasTextRef="0" hasNumRef="0"><hp:p paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0" id="${nid()}"><hp:run charPrIDRef="${head || hl ? 8 : 0}"><hp:t>${xmlEsc(text)}</hp:t></hp:run></hp:p></hp:subList><hp:cellAddr colAddr="${c}" rowAddr="${r}"/><hp:cellSpan colSpan="1" rowSpan="1"/><hp:cellSz width="${widths[c]}" height="282"/><hp:cellMargin left="510" right="510" top="141" bottom="141"/></hp:tc>`;
+    const table = [['순위', '이름', '기록', '비고']].concat(d.rows.map(r => [r.rank + '위', r.name, r.time, r.note]));
+    const trs = table.map((row, ri) => `<hp:tr>${row.map((v, ci) => cell(v, ci, ri, ri === 0, ri > 0 && !!d.rows[ri - 1].note)).join('')}</hp:tr>`).join('');
+    const tbl = `<hp:p id="${nid()}" paraPrIDRef="0" styleIDRef="0" pageBreak="0" columnBreak="0" merged="0"><hp:run charPrIDRef="0"><hp:tbl id="${nid()}" zOrder="0" numberingType="TABLE" textWrap="TOP_AND_BOTTOM" textFlow="BOTH_SIDES" lock="0" dropcapstyle="None" pageBreak="CELL" repeatHeader="0" rowCnt="${table.length}" colCnt="4" cellSpacing="0" borderFillIDRef="3" noAdjust="0"><hp:sz width="42520" widthRelTo="ABSOLUTE" height="${282 * table.length}" heightRelTo="ABSOLUTE" protect="0"/><hp:pos treatAsChar="1" affectLSpacing="0" flowWithText="1" allowOverlap="0" holdAnchorAndSO="0" vertRelTo="PARA" horzRelTo="COLUMN" vertAlign="TOP" horzAlign="LEFT" vertOffset="0" horzOffset="0"/><hp:outMargin left="0" right="0" top="0" bottom="0"/><hp:inMargin left="510" right="510" top="141" bottom="141"/>${trs}</hp:tbl></hp:run></hp:p>`;
+    const body = [para('달리기 뽑기 결과', 7), para(`모드: ${d.modeLabel}`), para(`일시: ${d.dateStr}`), para(`참가자: ${d.total}명`)];
+    if (d.pick) body.push(para(`당첨자: ${d.rows.slice(0, d.winners).map(r => r.name).join(', ')}`, 8));
+    body.push(para(''), tbl);
+    const section = tpl('secpre') + body.join('') + '</hs:sec>';
+    return makeZip([
+      { name: 'mimetype', data: 'application/hwp+zip' },
+      { name: 'version.xml', data: tpl('version') },
+      { name: 'Contents/header.xml', data: tpl('header') },
+      { name: 'Contents/section0.xml', data: section },
+      { name: 'Preview/PrvText.txt', data: resultText(d).slice(0, 1000) },
+      { name: 'settings.xml', data: tpl('settings') },
+      { name: 'META-INF/container.rdf', data: tpl('rdf') },
+      { name: 'Contents/content.hpf', data: tpl('hpf').replace(/@@DATE@@/g, d.iso) },
+      { name: 'META-INF/container.xml', data: tpl('container') },
+      { name: 'META-INF/manifest.xml', data: tpl('manifest') },
+    ], 'application/hwp+zip');
+  }
+
+  // 결과표 이미지 (PNG 저장, PDF 안에도 그대로 들어감)
+  function renderResultCanvas(d) {
+    const FONT = '"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif';
+    const CW = 1200, n = d.rows.length, cols = n <= 12 ? 1 : n <= 30 ? 2 : 3, per = Math.ceil(n / cols);
+    const chips = (d.pick ? d.rows.slice(0, d.winners) : d.rows.slice(0, 3));
+    const m = document.createElement('canvas').getContext('2d');
+    m.font = `800 22px ${FONT}`;
+    let cx = 40, lines = 1; const chipPos = [];
+    chips.forEach(r => { const w = m.measureText(`${medal(r.rank) || '🏅'} ${r.rank}위 ${r.name}`).width + 36; if (cx + w > CW - 40) { cx = 40; lines++; } chipPos.push({ r, x: cx, line: lines - 1, w }); cx += w + 10; });
+    const chipTop = 200, tableTop = chipTop + lines * 56 + 30, rowH = 40;
+    const CH = tableTop + (per + 1) * rowH + 60;
+    const c = document.createElement('canvas'); c.width = CW * 2; c.height = CH * 2;
+    const g = c.getContext('2d'); g.scale(2, 2);
+    g.fillStyle = '#fff'; g.fillRect(0, 0, CW, CH);
+    const band = g.createLinearGradient(0, 0, CW, 0); band.addColorStop(0, '#4c2fb8'); band.addColorStop(1, '#ff5fa2');
+    g.fillStyle = band; g.fillRect(0, 0, CW, 140);
+    g.fillStyle = '#fff'; g.textBaseline = 'middle'; g.textAlign = 'left';
+    g.font = `900 44px ${FONT}`; g.fillText('🏃 달리기 뽑기 결과', 40, 58);
+    g.font = `600 20px ${FONT}`; g.fillText(`${d.modeLabel}  ·  참가자 ${d.total}명  ·  ${d.dateStr}`, 42, 108);
+    g.fillStyle = '#4c2fb8'; g.font = `800 20px ${FONT}`; g.fillText(d.pick ? `🎉 당첨자 ${d.winners}명` : '🏆 TOP 3', 40, 172);
+    const chipColor = rank => rank === 1 ? '#ffd54a' : rank === 2 ? '#dfe5ee' : rank === 3 ? '#f4b783' : '#fff1b8';
+    chipPos.forEach(({ r, x, line, w }) => {
+      const y = chipTop + line * 56;
+      g.fillStyle = chipColor(r.rank); rr(g, x, y, w, 44, 22); g.fill();
+      g.fillStyle = '#2a1a00'; g.font = `800 22px ${FONT}`; g.fillText(`${medal(r.rank) || '🏅'} ${r.rank}위 ${r.name}`, x + 18, y + 23);
+    });
+    const colW = (CW - 80 - (cols - 1) * 20) / cols;
+    for (let ci = 0; ci < cols; ci++) {
+      const x0 = 40 + ci * (colW + 20);
+      g.fillStyle = '#ece8ff'; rr(g, x0, tableTop, colW, rowH - 4, 8); g.fill();
+      g.fillStyle = '#4c2fb8'; g.font = `800 17px ${FONT}`;
+      g.fillText('순위', x0 + 14, tableTop + 18); g.fillText('이름', x0 + 90, tableTop + 18);
+      g.textAlign = 'right'; g.fillText('기록', x0 + colW - 14, tableTop + 18); g.textAlign = 'left';
+      d.rows.slice(ci * per, ci * per + per).forEach((r, i) => {
+        const y = tableTop + (i + 1) * rowH;
+        g.fillStyle = r.note ? '#fff4c7' : i % 2 ? '#f7f7fb' : '#ffffff'; rr(g, x0, y, colW, rowH - 4, 8); g.fill();
+        g.fillStyle = '#111827'; g.font = `800 17px ${FONT}`; g.fillText(`${medal(r.rank)}${r.rank}위`, x0 + 14, y + 18);
+        g.font = `${r.note ? 800 : 600} 17px ${FONT}`;
+        let nm = r.name; const maxW = colW - 90 - 110;
+        while (g.measureText(nm).width > maxW && nm.length > 1) nm = nm.slice(0, -1);
+        g.fillText(nm === r.name ? nm : nm + '…', x0 + 90, y + 18);
+        g.textAlign = 'right'; g.fillStyle = '#6b7280'; g.font = `600 15px ${FONT}`;
+        g.fillText(r.time + (r.note ? `  ${r.note}` : ''), x0 + colW - 14, y + 18); g.textAlign = 'left';
+      });
+    }
+    return c;
+  }
+  function rr(g, x, y, w, h, r) {
+    g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+  }
+
+  // JPEG 한 장을 A4 한 페이지에 넣은 PDF (한글 글꼴을 따로 넣지 않아도 글자가 깨지지 않음)
+  function makePdf(canvas) {
+    const bin = atob(canvas.toDataURL('image/jpeg', 0.92).split(',')[1]);
+    const jpg = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) jpg[i] = bin.charCodeAt(i);
+    const iw = canvas.width, ih = canvas.height, PW = 595.28, PH = 841.89, M = 28;
+    const s = Math.min((PW - 2 * M) / iw, (PH - 2 * M) / ih), w = iw * s, h = ih * s, x = (PW - w) / 2, y = PH - M - h;
+    const enc = new TextEncoder(), chunks = [], offs = []; let len = 0;
+    const push = p => { const b = typeof p === 'string' ? enc.encode(p) : p; chunks.push(b); len += b.length; };
+    const obj = (i, body) => { offs[i] = len; push(`${i} 0 obj\n`); body(); push('\nendobj\n'); };
+    const content = `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Im0 Do Q`;
+    push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+    obj(1, () => push('<< /Type /Catalog /Pages 2 0 R >>'));
+    obj(2, () => push('<< /Type /Pages /Kids [3 0 R] /Count 1 >>'));
+    obj(3, () => push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`));
+    obj(4, () => { push(`<< /Type /XObject /Subtype /Image /Width ${iw} /Height ${ih} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpg.length} >>\nstream\n`); push(jpg); push('\nendstream'); });
+    obj(5, () => push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`));
+    const xref = len;
+    push(`xref\n0 6\n0000000000 65535 f \n${offs.slice(1).map(o => String(o).padStart(10, '0') + ' 00000 n \n').join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`);
+    return new Blob(chunks, { type: 'application/pdf' });
+  }
+
+  document.querySelectorAll('#exportBox [data-ex]').forEach(b => b.onclick = () => {
+    if (!lastRanking.length) return;
+    const d = resultData();
+    try {
+      switch (b.dataset.ex) {
+        case 'copy': copyText(resultText(d)); break;
+        case 'md': download(new Blob([resultMarkdown(d)], { type: 'text/markdown;charset=utf-8' }), fileName(d, 'md')); break;
+        case 'xlsx': download(makeXlsx(d), fileName(d, 'xlsx')); break;
+        case 'hwpx': download(makeHwpx(d), fileName(d, 'hwpx')); break;
+        case 'pdf': download(makePdf(renderResultCanvas(d)), fileName(d, 'pdf')); break;
+        case 'png': renderResultCanvas(d).toBlob(blob => download(blob, fileName(d, 'png')), 'image/png'); break;
+      }
+    } catch (e) { toast('저장 중 문제가 생겼어요: ' + e.message); }
+  });
+
+  // 색종이
+  const cc = $('#confetti'), cctx = cc.getContext('2d');
+  let pieces = [];
+  function startConfetti() {
+    cc.width = cc.clientWidth; cc.height = cc.clientHeight;
+    pieces = Array.from({ length: 160 }, () => ({ x: Math.random() * cc.width, y: -20 - Math.random() * cc.height, w: rand(6, 12), h: rand(8, 16), c: COLORS[Math.floor(Math.random() * COLORS.length)], vy: rand(80, 200), vx: rand(-40, 40), a: Math.random() * 6, va: rand(-4, 4) }));
+    let last = performance.now();
+    cancelAnimationFrame(confettiRaf);
+    const step = now => {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      cctx.clearRect(0, 0, cc.width, cc.height);
+      pieces.forEach(p => {
+        p.y += p.vy * dt; p.x += p.vx * dt + Math.sin(p.a) * 30 * dt; p.a += p.va * dt;
+        if (p.y > cc.height + 20) { p.y = -20; p.x = Math.random() * cc.width; }
+        cctx.save(); cctx.translate(p.x, p.y); cctx.rotate(p.a); cctx.fillStyle = p.c; cctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); cctx.restore();
+      });
+      confettiRaf = requestAnimationFrame(step);
+    };
+    confettiRaf = requestAnimationFrame(step);
+  }
+  function stopConfetti() { cancelAnimationFrame(confettiRaf); clearInterval(drumTimer); revealTimers.forEach(clearTimeout); revealTimers = []; cctx && cctx.clearRect(0, 0, cc.width, cc.height); }
+})();
+</script>
+<script>
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+</script>
+</body>
+</html>
